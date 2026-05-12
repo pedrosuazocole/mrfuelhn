@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel - Texaco</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <% if (user && user.userId) { %>
+  <!-- NAVEGACIÓN -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <div class="logo-texaco">⭐</div>
+        <span class="brand-text">Mr. Fuel</span>
+      </div>
+      
+      <ul class="navbar-menu">
+        <li><a href="/dashboard" class="<%= currentPath === '/dashboard' ? 'active' : '' %>">
+          <i class="fas fa-home"></i> Dashboard
+        </a></li>
+        
+        <li><a href="/auditorias" class="<%= currentPath.startsWith('/auditorias') ? 'active' : '' %>">
+          <i class="fas fa-clipboard-check"></i> Auditorías
+        </a></li>
+        
+        <li><a href="/estaciones" class="<%= currentPath.startsWith('/estaciones') ? 'active' : '' %>">
+          <i class="fas fa-gas-pump"></i> Estaciones
+        </a></li>
+        
+        <% if (user.userRole === 'admin') { %>
+        <li><a href="/usuarios" class="<%= currentPath.startsWith('/usuarios') ? 'active' : '' %>">
+          <i class="fas fa-users"></i> Usuarios
+        </a></li>
+        <% } %>
+      </ul>
+      
+      <div class="navbar-user">
+        <div class="user-info">
+          <span class="user-name"><%= user.userName %></span>
+          <span class="user-role"><%= user.userRole.toUpperCase() %></span>
+        </div>
+        <a href="/logout" class="btn-logout" title="Cerrar Sesión">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+  <% } %>
+  
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="main-content">
+    <%- body %>
+  </main>
+  
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>&copy; 2024 Mr. Fuel - Sistema de Cliente Misterioso Texaco | Instituto Tecnológico Santo Tomás</p>
+  </footer>
+  
+  <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-clipboard-check"></i> Nueva Auditoría
+      </h1>
+    </div>
+    
+    <div class="card">
+      <form id="formAuditoria" method="POST" action="/auditorias/nueva" enctype="multipart/form-data">
+        
+        <!-- INFORMACIÓN BÁSICA -->
+        <div class="card-header">📍 Información Básica</div>
+        
+        <div class="form-group">
+          <label for="estacion_id">Estación *</label>
+          <select name="estacion_id" id="estacion_id" class="form-control" required>
+            <option value="">Seleccioná una estación...</option>
+            <% estaciones.forEach(est => { %>
+            <option value="<%= est.id %>"><%= est.nombre %> (<%= est.codigo %>)</option>
+            <% }); %>
+          </select>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="fecha_visita">Fecha de Visita *</label>
+            <input type="date" name="fecha_visita" id="fecha_visita" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="hora_visita">Hora de Visita *</label>
+            <input type="time" name="hora_visita" id="hora_visita" class="form-control" required>
+          </div>
+        </div>
+        
+        <!-- CRITERIOS DE EVALUACIÓN -->
+        <div class="card-header" style="margin-top: 30px;">✅ Criterios de Evaluación</div>
+        
+        <!-- Limpieza de Bombas -->
+        <div class="form-group">
+          <label for="limpieza_bombas">
+            <i class="fas fa-broom"></i> Limpieza de Bombas (0-100)
+          </label>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <input type="range" name="limpieza_bombas" id="limpieza_bombas" class="form-range" min="0" max="100" value="0" data-target="valor_limpieza">
+            <span class="range-value" id="valor_limpieza">0%</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="limpieza_bombas_nota">Notas sobre Limpieza</label>
+          <textarea name="limpieza_bombas_nota" id="limpieza_bombas_nota" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <!-- Aceites Organizados -->
+        <div class="form-group">
+          <label for="aceites_organizados">
+            <i class="fas fa-oil-can"></i> Organización de Aceites (0-100)
+          </label>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <input type="range" name="aceites_organizados" id="aceites_organizados" class="form-range" min="0" max="100" value="0" data-target="valor_aceites">
+            <span class="range-value" id="valor_aceites">0%</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="aceites_organizados_nota">Notas sobre Aceites</label>
+          <textarea name="aceites_organizados_nota" id="aceites_organizados_nota" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <!-- Uniforme Completo -->
+        <div class="form-group">
+          <label for="uniforme_completo">
+            <i class="fas fa-shirt"></i> Uniforme Completo (0-100)
+          </label>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <input type="range" name="uniforme_completo" id="uniforme_completo" class="form-range" min="0" max="100" value="0" data-target="valor_uniforme">
+            <span class="range-value" id="valor_uniforme">0%</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="uniforme_tiene_gorra" id="uniforme_tiene_gorra">
+            ¿El empleado lleva gorra como parte del uniforme?
+          </label>
+        </div>
+        
+        <div class="form-group">
+          <label for="uniforme_nota">Notas sobre Uniforme</label>
+          <textarea name="uniforme_nota" id="uniforme_nota" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <!-- Protocolo de Saludo -->
+        <div class="form-group">
+          <label for="saludo_protocolo">
+            <i class="fas fa-handshake"></i> Protocolo de Saludo (0-100)
+          </label>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <input type="range" name="saludo_protocolo" id="saludo_protocolo" class="form-range" min="0" max="100" value="0" data-target="valor_saludo">
+            <span class="range-value" id="valor_saludo">0%</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="saludo_nota">Notas sobre Saludo</label>
+          <textarea name="saludo_nota" id="saludo_nota" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <!-- Trato Durante Compra -->
+        <div class="form-group">
+          <label for="trato_compra">
+            <i class="fas fa-comments"></i> Trato Durante la Compra (0-100)
+          </label>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <input type="range" name="trato_compra" id="trato_compra" class="form-range" min="0" max="100" value="0" data-target="valor_trato">
+            <span class="range-value" id="valor_trato">0%</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="trato_compra_nota">Notas sobre Trato</label>
+          <textarea name="trato_compra_nota" id="trato_compra_nota" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <!-- Despedida -->
+        <div class="form-group">
+          <label for="despedida_protocolo">
+            <i class="fas fa-wave-square"></i> Protocolo de Despedida (0-100)
+          </label>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <input type="range" name="despedida_protocolo" id="despedida_protocolo" class="form-range" min="0" max="100" value="0" data-target="valor_despedida">
+            <span class="range-value" id="valor_despedida">0%</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="despedida_nota">Notas sobre Despedida</label>
+          <textarea name="despedida_nota" id="despedida_nota" class="form-control" rows="2"></textarea>
+        </div>
+        
+        <!-- FOTOS -->
+        <div class="card-header" style="margin-top: 30px;">📸 Fotografías</div>
+        
+        <div class="form-group">
+          <label for="fotos">
+            <i class="fas fa-camera"></i> Subir Fotos (máximo 10)
+          </label>
+          <input type="file" name="fotos" id="fotos" class="form-control" accept="image/*" capture="environment" multiple>
+          <small class="text-muted">Se aceptan JPG, PNG y WEBP. Máximo 5MB por imagen.</small>
+        </div>
+        
+        <div id="preview-fotos" style="margin-top: 15px;"></div>
+        
+        <!-- OBSERVACIONES GENERALES -->
+        <div class="card-header" style="margin-top: 30px;">📝 Observaciones</div>
+        
+        <div class="form-group">
+          <label for="observaciones_generales">Observaciones Generales</label>
+          <textarea name="observaciones_generales" id="observaciones_generales" class="form-control" rows="4" placeholder="Comentarios adicionales sobre la visita..."></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="recomendaciones">Recomendaciones</label>
+          <textarea name="recomendaciones" id="recomendaciones" class="form-control" rows="4" placeholder="Sugerencias de mejora..."></textarea>
+        </div>
+        
+        <!-- BOTONES -->
+        <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px;">
+          <a href="/auditorias" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary" id="btnGuardar">
+            <i class="fas fa-save"></i> Guardar Auditoría
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  
+  <script>
+    // Actualizar valores de los rangos
+    document.querySelectorAll('.form-range').forEach(range => {
+      const targetId = range.dataset.target;
+      const target = document.getElementById(targetId);
+      
+      range.addEventListener('input', () => {
+        target.textContent = range.value + '%';
+      });
+    });
+    
+    // Preview de fotos
+    document.getElementById('fotos').addEventListener('change', function(e) {
+      const preview = document.getElementById('preview-fotos');
+      preview.innerHTML = '';
+      
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const div = document.createElement('div');
+          div.className = 'foto-preview';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <span class="foto-categoria">${file.name}</span>
+          `;
+          preview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    // Enviar formulario
+    document.getElementById('formAuditoria').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const btnGuardar = document.getElementById('btnGuardar');
+      btnGuardar.disabled = true;
+      btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+      
+      try {
+        const formData = new FormData(e.target);
+        const response = await fetch('/auditorias/nueva', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`✅ Auditoría guardada exitosamente.\nCalificación: ${result.calificacion}%`);
+          window.location.href = '/auditorias/' + result.auditoriaId;
+        } else {
+          alert('❌ Error: ' + result.mensaje);
+          btnGuardar.disabled = false;
+          btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Auditoría';
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al guardar la auditoría');
+        btnGuardar.disabled = false;
+        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Auditoría';
+      }
+    });
+    
+    // Establecer fecha y hora actual
+    const hoy = new Date();
+    document.getElementById('fecha_visita').valueAsDate = hoy;
+    document.getElementById('hora_visita').value = hoy.toTimeString().slice(0,5);
+  </script>
+</body>
+</html>

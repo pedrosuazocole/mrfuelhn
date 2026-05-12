@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-user-edit"></i> Editar Usuario
+      </h1>
+    </div>
+    
+    <div class="card">
+      <form method="POST" action="/usuarios/editar/<%= usuario.id %>">
+        <div class="card-header">Información del Usuario</div>
+        
+        <div class="form-group">
+          <label for="nombre">Nombre Completo *</label>
+          <input type="text" name="nombre" id="nombre" class="form-control" required value="<%= usuario.nombre %>">
+        </div>
+        
+        <div class="form-group">
+          <label for="email">Email *</label>
+          <input type="email" name="email" id="email" class="form-control" required value="<%= usuario.email %>">
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Nueva Contraseña (dejar vacío para no cambiar)</label>
+          <input type="password" name="password" id="password" class="form-control" minlength="6" placeholder="Mínimo 6 caracteres">
+          <small class="text-muted">Solo completar si querés cambiar la contraseña</small>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="rol">Rol *</label>
+            <select name="rol" id="rol" class="form-control" required>
+              <option value="auditor" <%= usuario.rol === 'auditor' ? 'selected' : '' %>>Auditor</option>
+              <option value="supervisor" <%= usuario.rol === 'supervisor' ? 'selected' : '' %>>Supervisor</option>
+              <option value="admin" <%= usuario.rol === 'admin' ? 'selected' : '' %>>Administrador</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" name="telefono" id="telefono" class="form-control" placeholder="9999-9999" value="<%= usuario.telefono || '' %>">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="activo" id="activo" <%= usuario.activo ? 'checked' : '' %>>
+            Usuario Activo
+          </label>
+        </div>
+        
+        <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px;">
+          <a href="/usuarios" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

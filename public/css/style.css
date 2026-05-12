@@ -1,0 +1,630 @@
+/**
+ * ========================================
+ * MR. FUEL - ESTILOS PRINCIPALES
+ * Identidad Visual Texaco
+ * ========================================
+ */
+
+/* VARIABLES TEXACO */
+:root {
+  --texaco-red: #ED1C24;
+  --texaco-dark: #000000;
+  --texaco-white: #FFFFFF;
+  --texaco-gray: #F5F5F5;
+  --texaco-border: #DDDDDD;
+  
+  --success: #28a745;
+  --warning: #ffc107;
+  --danger: #dc3545;
+  --info: #17a2b8;
+  
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* RESET Y BÁSICOS */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  background-color: var(--texaco-gray);
+}
+
+/* ==========================================
+   PÁGINA DE LOGIN
+   ========================================== */
+
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--texaco-red) 0%, #C41E1E 100%);
+  padding: 20px;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-box {
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.login-header {
+  background: var(--texaco-red);
+  color: white;
+  padding: 40px 30px;
+  text-align: center;
+}
+
+.texaco-star {
+  font-size: 80px;
+  margin-bottom: 10px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.login-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.login-header p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.login-form {
+  padding: 30px;
+}
+
+.login-footer {
+  padding: 20px 30px;
+  background: #f8f9fa;
+  border-top: 1px solid var(--texaco-border);
+  text-align: center;
+}
+
+.login-footer .text-muted {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+/* ==========================================
+   NAVEGACIÓN
+   ========================================== */
+
+.navbar {
+  background: var(--texaco-dark);
+  color: white;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 70px;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-texaco {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.brand-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+.navbar-menu {
+  display: flex;
+  list-style: none;
+  gap: 5px;
+}
+
+.navbar-menu a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-menu a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.navbar-menu a.active {
+  background: var(--texaco-red);
+  color: white;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info {
+  text-align: right;
+}
+
+.user-name {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-role {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-logout {
+  background: var(--texaco-red);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.btn-logout:hover {
+  background: #C41E1E;
+  transform: scale(1.1);
+}
+
+/* ==========================================
+   CONTENIDO PRINCIPAL
+   ========================================== */
+
+.main-content {
+  max-width: 1400px;
+  margin: 30px auto;
+  padding: 0 20px;
+  min-height: calc(100vh - 200px);
+}
+
+.page-header {
+  background: white;
+  padding: 25px 30px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--texaco-dark);
+  margin: 0;
+}
+
+/* ==========================================
+   TARJETAS Y WIDGETS
+   ========================================== */
+
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--texaco-dark);
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--texaco-red);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.stat-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.stat-value {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--texaco-red);
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================
+   FORMULARIOS
+   ========================================== */
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--texaco-border);
+  border-radius: 6px;
+  font-size: 15px;
+  transition: border-color 0.3s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--texaco-red);
+  box-shadow: 0 0 0 3px rgba(237, 28, 36, 0.1);
+}
+
+textarea.form-control {
+  min-height: 100px;
+  resize: vertical;
+}
+
+select.form-control {
+  cursor: pointer;
+}
+
+.form-range {
+  width: 100%;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ddd;
+  border-radius: 4px;
+  outline: none;
+}
+
+.form-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--texaco-red);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--texaco-red);
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+}
+
+.range-value {
+  display: inline-block;
+  min-width: 50px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--texaco-red);
+}
+
+/* ==========================================
+   BOTONES
+   ========================================== */
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.btn i {
+  margin-right: 8px;
+}
+
+.btn-primary {
+  background: var(--texaco-red);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #C41E1E;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  background: #218838;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+}
+
+.btn-block {
+  width: 100%;
+  display: block;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+/* ==========================================
+   TABLAS
+   ========================================== */
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+table th {
+  background: var(--texaco-dark);
+  color: white;
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+table td {
+  padding: 15px;
+  border-bottom: 1px solid var(--texaco-border);
+}
+
+table tr:hover {
+  background: #f8f9fa;
+}
+
+.badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge-warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.badge-danger {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* ==========================================
+   ALERTAS
+   ========================================== */
+
+.alert {
+  padding: 15px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  border-left: 4px solid var(--success);
+}
+
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid var(--danger);
+}
+
+.alert-info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border-left: 4px solid var(--info);
+}
+
+/* ==========================================
+   FOTO PREVIEW
+   ========================================== */
+
+.foto-preview {
+  display: inline-block;
+  margin: 10px;
+  position: relative;
+}
+
+.foto-preview img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 2px solid var(--texaco-border);
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.foto-preview img:hover {
+  transform: scale(1.05);
+}
+
+.foto-categoria {
+  display: block;
+  text-align: center;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+}
+
+/* ==========================================
+   FOOTER
+   ========================================== */
+
+.footer {
+  background: var(--texaco-dark);
+  color: white;
+  text-align: center;
+  padding: 20px;
+  margin-top: 50px;
+  font-size: 14px;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+@media (max-width: 768px) {
+  .navbar-container {
+    flex-direction: column;
+    height: auto;
+    padding: 15px;
+  }
+  
+  .navbar-menu {
+    flex-direction: column;
+    width: 100%;
+    margin: 15px 0;
+  }
+  
+  .navbar-menu a {
+    width: 100%;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  table {
+    font-size: 14px;
+  }
+  
+  table th,
+  table td {
+    padding: 10px 8px;
+  }
+}
+
+/* ==========================================
+   UTILIDADES
+   ========================================== */
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: #6c757d; }
+.mt-20 { margin-top: 20px; }
+.mb-20 { margin-bottom: 20px; }
+.hidden { display: none; }

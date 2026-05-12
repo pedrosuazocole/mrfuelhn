@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-clipboard-check"></i> Auditoría #<%= auditoria.id %>
+      </h1>
+      <div>
+        <a href="/auditorias" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Volver
+        </a>
+        <% if (user.userRole === 'admin') { %>
+        <button class="btn btn-secondary" data-eliminar-auditoria="<%= auditoria.id %>">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
+        <% } %>
+      </div>
+    </div>
+    
+    <!-- INFORMACIÓN GENERAL -->
+    <div class="card">
+      <div class="card-header">📍 Información General</div>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+          <strong>Estación:</strong><br>
+          <%= auditoria.estacion_nombre %> (<%= auditoria.estacion_codigo %>)
+        </div>
+        <div>
+          <strong>Dirección:</strong><br>
+          <%= auditoria.estacion_direccion %><br>
+          <%= auditoria.estacion_ciudad %>
+        </div>
+        <div>
+          <strong>Fecha de Visita:</strong><br>
+          <%= new Date(auditoria.fecha_visita).toLocaleDateString('es-HN') %>
+        </div>
+        <div>
+          <strong>Hora de Visita:</strong><br>
+          <%= auditoria.hora_visita %>
+        </div>
+        <div>
+          <strong>Auditor:</strong><br>
+          <%= auditoria.auditor_nombre %>
+        </div>
+        <div>
+          <strong>Estado:</strong><br>
+          <% if (auditoria.estado === 'completada') { %>
+            <span class="badge badge-success">Completada</span>
+          <% } else if (auditoria.estado === 'revisada') { %>
+            <span class="badge badge-info">Revisada</span>
+          <% } else { %>
+            <span class="badge badge-warning">Borrador</span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+    
+    <!-- CALIFICACIÓN GENERAL -->
+    <div class="card">
+      <div style="text-align: center; padding: 20px;">
+        <h2 style="margin-bottom: 10px; color: #666;">Calificación General</h2>
+        <div style="font-size: 72px; font-weight: 700; margin: 20px 0; color: <%= auditoria.calificacion_general >= 80 ? '#28a745' : auditoria.calificacion_general >= 60 ? '#ffc107' : '#dc3545' %>;">
+          <%= auditoria.calificacion_general %>%
+        </div>
+        <% if (auditoria.calificacion_general >= 80) { %>
+          <p style="color: #28a745; font-size: 18px;">✅ Excelente servicio</p>
+        <% } else if (auditoria.calificacion_general >= 60) { %>
+          <p style="color: #ffc107; font-size: 18px;">⚠️ Buen servicio, con áreas de mejora</p>
+        <% } else { %>
+          <p style="color: #dc3545; font-size: 18px;">❌ Requiere atención inmediata</p>
+        <% } %>
+      </div>
+    </div>
+    
+    <!-- DETALLE DE EVALUACIÓN -->
+    <div class="card">
+      <div class="card-header">📊 Detalle de Evaluación</div>
+      
+      <!-- Limpieza de Bombas -->
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong><i class="fas fa-broom"></i> Limpieza de Bombas</strong>
+          <span class="badge <%= auditoria.limpieza_bombas >= 80 ? 'badge-success' : auditoria.limpieza_bombas >= 60 ? 'badge-warning' : 'badge-danger' %>">
+            <%= auditoria.limpieza_bombas %>%
+          </span>
+        </div>
+        <% if (auditoria.limpieza_bombas_nota) { %>
+        <p style="color: #666; font-size: 14px; margin: 0;"><%= auditoria.limpieza_bombas_nota %></p>
+        <% } %>
+      </div>
+      
+      <!-- Organización de Aceites -->
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong><i class="fas fa-oil-can"></i> Organización de Aceites</strong>
+          <span class="badge <%= auditoria.aceites_organizados >= 80 ? 'badge-success' : auditoria.aceites_organizados >= 60 ? 'badge-warning' : 'badge-danger' %>">
+            <%= auditoria.aceites_organizados %>%
+          </span>
+        </div>
+        <% if (auditoria.aceites_organizados_nota) { %>
+        <p style="color: #666; font-size: 14px; margin: 0;"><%= auditoria.aceites_organizados_nota %></p>
+        <% } %>
+      </div>
+      
+      <!-- Uniforme Completo -->
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong>
+            <i class="fas fa-shirt"></i> Uniforme Completo
+            <% if (auditoria.uniforme_tiene_gorra) { %>
+              <span style="color: #28a745;">(con gorra ✓)</span>
+            <% } else { %>
+              <span style="color: #dc3545;">(sin gorra ✗)</span>
+            <% } %>
+          </strong>
+          <span class="badge <%= auditoria.uniforme_completo >= 80 ? 'badge-success' : auditoria.uniforme_completo >= 60 ? 'badge-warning' : 'badge-danger' %>">
+            <%= auditoria.uniforme_completo %>%
+          </span>
+        </div>
+        <% if (auditoria.uniforme_nota) { %>
+        <p style="color: #666; font-size: 14px; margin: 0;"><%= auditoria.uniforme_nota %></p>
+        <% } %>
+      </div>
+      
+      <!-- Protocolo de Saludo -->
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong><i class="fas fa-handshake"></i> Protocolo de Saludo</strong>
+          <span class="badge <%= auditoria.saludo_protocolo >= 80 ? 'badge-success' : auditoria.saludo_protocolo >= 60 ? 'badge-warning' : 'badge-danger' %>">
+            <%= auditoria.saludo_protocolo %>%
+          </span>
+        </div>
+        <% if (auditoria.saludo_nota) { %>
+        <p style="color: #666; font-size: 14px; margin: 0;"><%= auditoria.saludo_nota %></p>
+        <% } %>
+      </div>
+      
+      <!-- Trato Durante Compra -->
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong><i class="fas fa-comments"></i> Trato Durante la Compra</strong>
+          <span class="badge <%= auditoria.trato_compra >= 80 ? 'badge-success' : auditoria.trato_compra >= 60 ? 'badge-warning' : 'badge-danger' %>">
+            <%= auditoria.trato_compra %>%
+          </span>
+        </div>
+        <% if (auditoria.trato_compra_nota) { %>
+        <p style="color: #666; font-size: 14px; margin: 0;"><%= auditoria.trato_compra_nota %></p>
+        <% } %>
+      </div>
+      
+      <!-- Protocolo de Despedida -->
+      <div style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong><i class="fas fa-wave-square"></i> Protocolo de Despedida</strong>
+          <span class="badge <%= auditoria.despedida_protocolo >= 80 ? 'badge-success' : auditoria.despedida_protocolo >= 60 ? 'badge-warning' : 'badge-danger' %>">
+            <%= auditoria.despedida_protocolo %>%
+          </span>
+        </div>
+        <% if (auditoria.despedida_nota) { %>
+        <p style="color: #666; font-size: 14px; margin: 0;"><%= auditoria.despedida_nota %></p>
+        <% } %>
+      </div>
+    </div>
+    
+    <!-- FOTOGRAFÍAS -->
+    <% if (fotos.length > 0) { %>
+    <div class="card">
+      <div class="card-header">📸 Fotografías de la Visita</div>
+      <div style="padding: 20px;">
+        <% fotos.forEach(foto => { %>
+        <div class="foto-preview">
+          <img src="<%= foto.ruta_archivo %>" alt="<%= foto.descripcion %>" onclick="window.open(this.src)">
+          <span class="foto-categoria"><%= foto.categoria %></span>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
+    
+    <!-- OBSERVACIONES -->
+    <% if (auditoria.observaciones_generales || auditoria.recomendaciones) { %>
+    <div class="card">
+      <div class="card-header">📝 Observaciones y Recomendaciones</div>
+      
+      <% if (auditoria.observaciones_generales) { %>
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <strong>Observaciones Generales:</strong>
+        <p style="margin-top: 10px; color: #666;"><%= auditoria.observaciones_generales %></p>
+      </div>
+      <% } %>
+      
+      <% if (auditoria.recomendaciones) { %>
+      <div style="padding: 20px;">
+        <strong>Recomendaciones:</strong>
+        <p style="margin-top: 10px; color: #666;"><%= auditoria.recomendaciones %></p>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+    
+    <!-- METADATA -->
+    <div class="card">
+      <div class="card-header">ℹ️ Información Adicional</div>
+      <div style="padding: 20px;">
+        <p><strong>Fecha de Registro:</strong> <%= new Date(auditoria.fecha_creacion).toLocaleString('es-HN') %></p>
+        <p><strong>ID de Auditoría:</strong> #<%= auditoria.id %></p>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .categoria-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .categoria-header {
+      background: #ED1C24;
+      color: white;
+      padding: 15px;
+      margin: -20px -20px 20px -20px;
+      border-radius: 8px 8px 0 0;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .item-detalle {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 15px;
+    }
+    .item-detalle:last-child {
+      border-bottom: none;
+    }
+    .item-icono {
+      font-size: 24px;
+    }
+    .cumple {
+      color: #28a745;
+    }
+    .no-cumple {
+      color: #dc3545;
+    }
+    .fotos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .foto-item {
+      position: relative;
+      border-radius: 5px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .foto-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .firma-container {
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      text-align: center;
+      max-width: 400px;
+    }
+    .firma-container img {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-clipboard-check"></i> Auditoría #<%= auditoria.id %>
+      </h1>
+      <div>
+        <a href="/auditorias-v2" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Volver
+        </a>
+        <% if (user.userRole === 'admin') { %>
+        <button class="btn btn-secondary" data-eliminar-auditoria="<%= auditoria.id %>">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
+        <% } %>
+      </div>
+    </div>
+    
+    <!-- Información General -->
+    <div class="card">
+      <div class="card-header">📍 Información General</div>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+          <strong>Estación:</strong><br>
+          <%= auditoria.estacion_nombre %> (<%= auditoria.estacion_codigo %>)
+        </div>
+        <div>
+          <strong>Dirección:</strong><br>
+          <%= auditoria.estacion_direccion %><br>
+          <%= auditoria.estacion_ciudad %>
+        </div>
+        <div>
+          <strong>Fecha de Visita:</strong><br>
+          <%= new Date(auditoria.fecha_visita).toLocaleDateString('es-HN') %>
+        </div>
+        <div>
+          <strong>Hora de Visita:</strong><br>
+          <%= auditoria.hora_visita %>
+        </div>
+        <div>
+          <strong>Auditor:</strong><br>
+          <%= auditoria.auditor_nombre %>
+        </div>
+        <div>
+          <strong>Estado:</strong><br>
+          <span class="badge badge-success">Completada</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Calificación General -->
+    <div class="card">
+      <div style="text-align: center; padding: 20px;">
+        <h2 style="margin-bottom: 10px; color: #666;">Calificación General</h2>
+        <div style="font-size: 72px; font-weight: 700; margin: 20px 0; color: <%= auditoria.calificacion_general >= 80 ? '#28a745' : auditoria.calificacion_general >= 60 ? '#ffc107' : '#dc3545' %>;">
+          <%= auditoria.calificacion_general %>%
+        </div>
+        <p style="font-size: 18px; color: #666;">
+          <strong><%= auditoria.items_cumplidos %> de <%= auditoria.total_items %></strong> ítems cumplidos
+        </p>
+        <% if (auditoria.calificacion_general >= 80) { %>
+          <p style="color: #28a745; font-size: 18px;">✅ Excelente cumplimiento</p>
+        <% } else if (auditoria.calificacion_general >= 60) { %>
+          <p style="color: #ffc107; font-size: 18px;">⚠️ Cumplimiento aceptable con áreas de mejora</p>
+        <% } else { %>
+          <p style="color: #dc3545; font-size: 18px;">❌ Requiere atención urgente</p>
+        <% } %>
+      </div>
+    </div>
+    
+    <!-- Evaluación por Categorías -->
+    <% categorias.forEach(categoria => { %>
+    <div class="categoria-section">
+      <div class="categoria-header">
+        <%= categoria.nombre %>
+      </div>
+      
+      <% categoria.evaluaciones.forEach(eval => { %>
+      <div class="item-detalle">
+        <div class="item-icono <%= eval.cumple ? 'cumple' : 'no-cumple' %>">
+          <%= eval.cumple ? '✅' : '❌' %>
+        </div>
+        <div>
+          <strong><%= eval.item_nombre %></strong>
+          <% if (eval.item_descripcion) { %>
+            <p style="color: #666; font-size: 14px; margin: 5px 0;"><%= eval.item_descripcion %></p>
+          <% } %>
+          <% if (eval.observacion) { %>
+            <p style="color: #333; margin: 5px 0; padding: 10px; background: #f8f9fa; border-left: 3px solid #ED1C24;">
+              <i class="fas fa-comment"></i> <%= eval.observacion %>
+            </p>
+          <% } %>
+          <% if (eval.fotos && eval.fotos.length > 0) { %>
+            <div class="fotos-grid">
+              <% eval.fotos.forEach(foto => { %>
+                <div class="foto-item" onclick="window.open('<%= foto.ruta_archivo %>')">
+                  <img src="<%= foto.ruta_archivo %>" alt="Evidencia fotográfica">
+                </div>
+              <% }); %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% }); %>
+    
+    <!-- Observaciones -->
+    <% if (auditoria.observaciones_generales || auditoria.recomendaciones) { %>
+    <div class="card">
+      <div class="card-header">📝 Observaciones y Recomendaciones</div>
+      
+      <% if (auditoria.observaciones_generales) { %>
+      <div style="padding: 20px; border-bottom: 1px solid #eee;">
+        <strong>Observaciones Generales:</strong>
+        <p style="margin-top: 10px; color: #666;"><%= auditoria.observaciones_generales %></p>
+      </div>
+      <% } %>
+      
+      <% if (auditoria.recomendaciones) { %>
+      <div style="padding: 20px;">
+        <strong>Recomendaciones:</strong>
+        <p style="margin-top: 10px; color: #666;"><%= auditoria.recomendaciones %></p>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+    
+    <!-- Firma del Supervisor -->
+    <% if (auditoria.supervisor_nombre) { %>
+    <div class="card">
+      <div class="card-header">✍️ Cierre de Reporte</div>
+      <div style="padding: 20px;">
+        <p><strong>Supervisor:</strong> <%= auditoria.supervisor_nombre %></p>
+        <% if (auditoria.supervisor_firma) { %>
+          <div class="firma-container">
+            <img src="<%= auditoria.supervisor_firma %>" alt="Firma digital">
+            <p style="margin-top: 10px; font-size: 12px; color: #666;">Firma Digital</p>
+          </div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+    
+    <!-- Metadata -->
+    <div class="card">
+      <div class="card-header">ℹ️ Información Adicional</div>
+      <div style="padding: 20px;">
+        <p><strong>Fecha de Registro:</strong> <%= new Date(auditoria.fecha_creacion).toLocaleString('es-HN') %></p>
+        <p><strong>ID de Auditoría:</strong> #<%= auditoria.id %></p>
+        <p><strong>Versión:</strong> Mr. Fuel v2.0</p>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  <script>
+    // Eliminar auditoría
+    document.addEventListener('click', async (e) => {
+      if (e.target.matches('[data-eliminar-auditoria]') || e.target.closest('[data-eliminar-auditoria]')) {
+        e.preventDefault();
+        
+        const btn = e.target.closest('[data-eliminar-auditoria]');
+        const auditoriaId = btn.dataset.eliminarAuditoria;
+        
+        if (!confirm('¿Estás seguro de eliminar esta auditoría? Esta acción no se puede deshacer.')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/auditorias-v2/${auditoriaId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            alert('✅ Auditoría eliminada correctamente');
+            window.location.href = '/auditorias-v2';
+          } else {
+            alert('❌ Error: ' + result.mensaje);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          alert('❌ Error al eliminar auditoría');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

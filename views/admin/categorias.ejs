@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-list-check"></i> Gestión de Checklist
+      </h1>
+      <button class="btn btn-primary" data-toggle-modal="nueva-categoria">
+        <i class="fas fa-plus"></i> Nueva Categoría
+      </button>
+    </div>
+    
+    <% if (categorias.length === 0) { %>
+      <div class="card">
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <i class="fas fa-list-check" style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;"></i>
+          <p style="font-size: 18px;">No hay categorías configuradas</p>
+          <p>Ejecuta la migración: <code>npm run migrate-v2</code></p>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Ítems</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% categorias.forEach(cat => { %>
+            <tr>
+              <td><strong><%= cat.orden %></strong></td>
+              <td><%= cat.nombre %></td>
+              <td><%= cat.descripcion || '-' %></td>
+              <td><%= cat.total_items %> (<%= cat.items_activos %> activos)</td>
+              <td>
+                <span class="badge <%= cat.activo ? 'badge-success' : 'badge-danger' %>">
+                  <%= cat.activo ? 'Activa' : 'Inactiva' %>
+                </span>
+              </td>
+              <td>
+                <a href="/admin/categorias/<%= cat.id %>/items" class="btn btn-sm btn-secondary" title="Ver ítems">
+                  <i class="fas fa-list"></i>
+                </a>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <div class="navbar-brand">
+      <div class="logo-texaco">⭐</div>
+      <span class="brand-text">Mr. Fuel</span>
+    </div>
+    
+    <ul class="navbar-menu">
+      <li><a href="/dashboard" class="<%= currentPath === '/dashboard' ? 'active' : '' %>">
+        <i class="fas fa-home"></i> Dashboard
+      </a></li>
+      
+      <li><a href="/auditorias-v2" class="<%= currentPath.startsWith('/auditorias') ? 'active' : '' %>">
+        <i class="fas fa-clipboard-check"></i> Auditorías v2.0
+      </a></li>
+      
+      <li><a href="/estaciones" class="<%= currentPath.startsWith('/estaciones') ? 'active' : '' %>">
+        <i class="fas fa-gas-pump"></i> Estaciones
+      </a></li>
+      
+      <% if (user.userRole === 'admin') { %>
+      <li><a href="/usuarios" class="<%= currentPath.startsWith('/usuarios') ? 'active' : '' %>">
+        <i class="fas fa-users"></i> Usuarios
+      </a></li>
+      <li><a href="/admin/categorias" class="<%= currentPath.startsWith('/admin') ? 'active' : '' %>">
+        <i class="fas fa-cog"></i> Checklist
+      </a></li>
+      <% } %>
+    </ul>
+    
+    <div class="navbar-user">
+      <div class="user-info">
+        <span class="user-name"><%= user.userName %></span>
+        <span class="user-role"><%= user.userRole.toUpperCase() %></span>
+      </div>
+      <a href="/logout" class="btn-logout" title="Cerrar Sesión">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
+    </div>
+  </div>
+</nav>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-gas-pump"></i> Nueva Estación
+      </h1>
+    </div>
+    
+    <div class="card">
+      <form method="POST" action="/estaciones/nueva">
+        <div class="card-header">Información de la Estación</div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="nombre">Nombre de la Estación *</label>
+            <input type="text" name="nombre" id="nombre" class="form-control" required placeholder="Ej: Texaco Tegucigalpa Centro">
+          </div>
+          
+          <div class="form-group">
+            <label for="codigo">Código *</label>
+            <input type="text" name="codigo" id="codigo" class="form-control" required placeholder="Ej: TEG-001">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="direccion">Dirección Completa *</label>
+          <input type="text" name="direccion" id="direccion" class="form-control" required placeholder="Boulevard Morazán, frente al Centro Comercial">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="ciudad">Ciudad *</label>
+            <input type="text" name="ciudad" id="ciudad" class="form-control" required placeholder="Tegucigalpa">
+          </div>
+          
+          <div class="form-group">
+            <label for="departamento">Departamento *</label>
+            <select name="departamento" id="departamento" class="form-control" required>
+              <option value="">Seleccionar...</option>
+              <option value="Atlántida">Atlántida</option>
+              <option value="Colón">Colón</option>
+              <option value="Comayagua">Comayagua</option>
+              <option value="Copán">Copán</option>
+              <option value="Cortés">Cortés</option>
+              <option value="Choluteca">Choluteca</option>
+              <option value="El Paraíso">El Paraíso</option>
+              <option value="Francisco Morazán">Francisco Morazán</option>
+              <option value="Gracias a Dios">Gracias a Dios</option>
+              <option value="Intibucá">Intibucá</option>
+              <option value="Islas de la Bahía">Islas de la Bahía</option>
+              <option value="La Paz">La Paz</option>
+              <option value="Lempira">Lempira</option>
+              <option value="Ocotepeque">Ocotepeque</option>
+              <option value="Olancho">Olancho</option>
+              <option value="Santa Bárbara">Santa Bárbara</option>
+              <option value="Valle">Valle</option>
+              <option value="Yoro">Yoro</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" name="telefono" id="telefono" class="form-control" placeholder="2222-3333">
+          </div>
+          
+          <div class="form-group">
+            <label for="encargado">Nombre del Encargado</label>
+            <input type="text" name="encargado" id="encargado" class="form-control" placeholder="Juan Pérez">
+          </div>
+        </div>
+        
+        <div class="card-header" style="margin-top: 20px;">Geolocalización (Opcional)</div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="latitud">Latitud</label>
+            <input type="number" step="any" name="latitud" id="latitud" class="form-control" placeholder="14.0723">
+          </div>
+          
+          <div class="form-group">
+            <label for="longitud">Longitud</label>
+            <input type="number" step="any" name="longitud" id="longitud" class="form-control" placeholder="-87.1921">
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px;">
+          <a href="/estaciones" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Guardar Estación
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

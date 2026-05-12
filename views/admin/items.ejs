@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-list"></i> <%= titulo %>
+      </h1>
+      <div>
+        <a href="/admin/categorias" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Volver a Categorías
+        </a>
+        <button class="btn btn-primary" data-toggle-modal="nuevo-item">
+          <i class="fas fa-plus"></i> Nuevo Ítem
+        </button>
+      </div>
+    </div>
+    
+    <!-- Información de la Categoría -->
+    <div class="card">
+      <div class="card-header" style="background: #ED1C24; color: white;">
+        <%= categoria.nombre %>
+      </div>
+      <div style="padding: 20px;">
+        <p><strong>Descripción:</strong> <%= categoria.descripcion || 'Sin descripción' %></p>
+        <p><strong>Orden:</strong> <%= categoria.orden %></p>
+        <p><strong>Estado:</strong> 
+          <span class="badge <%= categoria.activo ? 'badge-success' : 'badge-danger' %>">
+            <%= categoria.activo ? 'Activa' : 'Inactiva' %>
+          </span>
+        </p>
+      </div>
+    </div>
+    
+    <!-- Lista de Ítems -->
+    <% if (items.length === 0) { %>
+      <div class="card">
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <i class="fas fa-clipboard-list" style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;"></i>
+          <p style="font-size: 18px;">No hay ítems en esta categoría</p>
+          <button class="btn btn-primary" data-toggle-modal="nuevo-item" style="margin-top: 20px;">
+            <i class="fas fa-plus"></i> Agregar Primer Ítem
+          </button>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Max Fotos</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach(item => { %>
+            <tr>
+              <td><strong><%= item.orden %></strong></td>
+              <td><%= item.nombre %></td>
+              <td><%= item.descripcion || '-' %></td>
+              <td><%= item.max_fotos %></td>
+              <td>
+                <span class="badge <%= item.activo ? 'badge-success' : 'badge-danger' %>">
+                  <%= item.activo ? 'Activo' : 'Inactivo' %>
+                </span>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-secondary" title="Editar" onclick="alert('Funcionalidad de edición próximamente')">
+                  <i class="fas fa-edit"></i>
+                </button>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+    
+    <!-- Resumen -->
+    <div class="card">
+      <div style="padding: 20px;">
+        <h3>📊 Resumen</h3>
+        <p><strong>Total de ítems:</strong> <%= items.length %></p>
+        <p><strong>Ítems activos:</strong> <%= items.filter(i => i.activo).length %></p>
+        <p><strong>Ítems inactivos:</strong> <%= items.filter(i => !i.activo).length %></p>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

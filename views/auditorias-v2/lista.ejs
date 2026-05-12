@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-clipboard-list"></i> Auditorías v2.0
+      </h1>
+      <a href="/auditorias-v2/nueva" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nueva Auditoría
+      </a>
+    </div>
+    
+    <div class="card">
+      <% if (auditorias.length === 0) { %>
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <i class="fas fa-clipboard-list" style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;"></i>
+          <p style="font-size: 18px;">No hay auditorías registradas</p>
+          <a href="/auditorias-v2/nueva" class="btn btn-primary" style="margin-top: 20px;">
+            <i class="fas fa-plus"></i> Crear Primera Auditoría
+          </a>
+        </div>
+      <% } else { %>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Estación</th>
+              <th>Fecha</th>
+              <th>Auditor</th>
+              <th>Calificación</th>
+              <th>Cumplimiento</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% auditorias.forEach(aud => { %>
+            <tr>
+              <td><strong>#<%= aud.id %></strong></td>
+              <td><%= aud.estacion_nombre %></td>
+              <td><%= new Date(aud.fecha_visita).toLocaleDateString('es-HN') %></td>
+              <td><%= aud.auditor_nombre %></td>
+              <td>
+                <span class="badge <%= aud.calificacion_general >= 80 ? 'badge-success' : aud.calificacion_general >= 60 ? 'badge-warning' : 'badge-danger' %>">
+                  <%= aud.calificacion_general %>%
+                </span>
+              </td>
+              <td><%= aud.items_cumplidos %>/<%= aud.total_items %></td>
+              <td>
+                <a href="/auditorias-v2/<%= aud.id %>" class="btn btn-sm btn-secondary" title="Ver detalle">
+                  <i class="fas fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>
