@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="Sistema de auditorías para estaciones de servicio Texaco Honduras">
+  <meta name="theme-color" content="#ED1C24">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mr. Fuel">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Favicon e Íconos -->
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-192x192.svg">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
+  
+  <!-- Estilos -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-ticket-alt"></i> Tickets de Mantenimiento
+      </h1>
+      <a href="/tickets/nuevo" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nuevo Ticket
+      </a>
+    </div>
+    
+    <!-- Estadísticas -->
+    <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+      <div class="stat-card">
+        <div class="stat-value"><%= stats.total.count %></div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-card" style="background: #fff3cd;">
+        <div class="stat-value" style="color: #856404;"><%= stats.pendientes.count %></div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-card" style="background: #cfe2ff;">
+        <div class="stat-value" style="color: #084298;"><%= stats.enProceso.count %></div>
+        <div class="stat-label">En Proceso</div>
+      </div>
+      <div class="stat-card" style="background: #d1e7dd;">
+        <div class="stat-value" style="color: #0f5132;"><%= stats.resueltos.count %></div>
+        <div class="stat-label">Resueltos</div>
+      </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div class="card-header">Filtros</div>
+      <form method="GET" style="padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 15px; align-items: end;">
+        <div class="form-group" style="margin: 0;">
+          <label>Estado</label>
+          <select name="estado" class="form-control">
+            <option value="">Todos</option>
+            <option value="pendiente" <%= filtros.estado === 'pendiente' ? 'selected' : '' %>>Pendiente</option>
+            <option value="en_proceso" <%= filtros.estado === 'en_proceso' ? 'selected' : '' %>>En Proceso</option>
+            <option value="resuelto" <%= filtros.estado === 'resuelto' ? 'selected' : '' %>>Resuelto</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+          <label>Prioridad</label>
+          <select name="prioridad" class="form-control">
+            <option value="">Todas</option>
+            <option value="baja" <%= filtros.prioridad === 'baja' ? 'selected' : '' %>>Baja</option>
+            <option value="media" <%= filtros.prioridad === 'media' ? 'selected' : '' %>>Media</option>
+            <option value="alta" <%= filtros.prioridad === 'alta' ? 'selected' : '' %>>Alta</option>
+            <option value="urgente" <%= filtros.prioridad === 'urgente' ? 'selected' : '' %>>Urgente</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin: 0;">
+          <label>Estación</label>
+          <select name="estacion_id" class="form-control">
+            <option value="">Todas</option>
+            <% estaciones.forEach(est => { %>
+            <option value="<%= est.id %>" <%= filtros.estacion_id == est.id ? 'selected' : '' %>><%= est.nombre %></option>
+            <% }); %>
+          </select>
+        </div>
+        
+        <div>
+          <button type="submit" class="btn btn-primary">Filtrar</button>
+          <a href="/tickets" class="btn btn-secondary">Limpiar</a>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Lista de Tickets -->
+    <div class="card">
+      <% if (tickets.length === 0) { %>
+        <div style="padding: 40px; text-align: center; color: #666;">
+          <i class="fas fa-ticket-alt" style="font-size: 64px; opacity: 0.3; margin-bottom: 20px;"></i>
+          <p style="font-size: 18px;">No hay tickets que mostrar</p>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Título</th>
+                <th>Estación</th>
+                <th>Tipo</th>
+                <th>Prioridad</th>
+                <th>Estado</th>
+                <th>Reportado</th>
+                <th>Asignado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% tickets.forEach(ticket => { %>
+              <tr>
+                <td><strong>#<%= ticket.id %></strong></td>
+                <td><%= ticket.titulo %></td>
+                <td><%= ticket.estacion_nombre %></td>
+                <td><span class="badge badge-secondary"><%= ticket.tipo %></span></td>
+                <td>
+                  <% 
+                    let prioridadColor = '';
+                    if (ticket.prioridad === 'urgente') prioridadColor = 'badge-danger';
+                    else if (ticket.prioridad === 'alta') prioridadColor = 'badge-warning';
+                    else if (ticket.prioridad === 'media') prioridadColor = 'badge-info';
+                    else prioridadColor = 'badge-secondary';
+                  %>
+                  <span class="badge <%= prioridadColor %>"><%= ticket.prioridad %></span>
+                </td>
+                <td>
+                  <% 
+                    let estadoColor = '';
+                    let estadoTexto = '';
+                    if (ticket.estado === 'resuelto') { estadoColor = 'badge-success'; estadoTexto = 'Resuelto'; }
+                    else if (ticket.estado === 'en_proceso') { estadoColor = 'badge-info'; estadoTexto = 'En Proceso'; }
+                    else { estadoColor = 'badge-warning'; estadoTexto = 'Pendiente'; }
+                  %>
+                  <span class="badge <%= estadoColor %>"><%= estadoTexto %></span>
+                </td>
+                <td><%= ticket.reportado_nombre %></td>
+                <td><%= ticket.asignado_nombre || '-' %></td>
+                <td>
+                  <a href="/tickets/<%= ticket.id %>" class="btn btn-sm btn-primary">
+                    <i class="fas fa-eye"></i> Ver
+                  </a>
+                </td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

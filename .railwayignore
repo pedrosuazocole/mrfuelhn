@@ -1,0 +1,47 @@
+# Railway Ignore File
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database (se crea automáticamente)
+database/*.db
+database/*.db-journal
+
+# Uploads (se crean dinámicamente)
+public/uploads/*.jpg
+public/uploads/*.png
+public/uploads/*.jpeg
+public/uploads/*.webp
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Documentation (opcional, puedes incluirla)
+# README.md
+# MANUAL_USUARIO.md

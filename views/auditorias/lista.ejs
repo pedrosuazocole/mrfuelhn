@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-clipboard-check"></i> Auditorías
+      </h1>
+      <a href="/auditorias/nueva" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nueva Auditoría
+      </a>
+    </div>
+    
+    <!-- FILTROS -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-filter"></i> Filtros
+      </div>
+      
+      <form method="GET" action="/auditorias">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+          <div class="form-group">
+            <label for="estacion">Estación</label>
+            <select name="estacion" id="estacion" class="form-control">
+              <option value="">Todas las estaciones</option>
+              <% estaciones.forEach(est => { %>
+              <option value="<%= est.id %>" <%= filtros.estacion == est.id ? 'selected' : '' %>>
+                <%= est.nombre %>
+              </option>
+              <% }); %>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="fecha_desde">Desde</label>
+            <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="<%= filtros.fecha_desde || '' %>">
+          </div>
+          
+          <div class="form-group">
+            <label for="fecha_hasta">Hasta</label>
+            <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="<%= filtros.fecha_hasta || '' %>">
+          </div>
+          
+          <div class="form-group">
+            <label for="auditor">Auditor</label>
+            <select name="auditor" id="auditor" class="form-control">
+              <option value="">Todos los auditores</option>
+              <% auditores.forEach(aud => { %>
+              <option value="<%= aud.id %>" <%= filtros.auditor == aud.id ? 'selected' : '' %>>
+                <%= aud.nombre %>
+              </option>
+              <% }); %>
+            </select>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+          <a href="/auditorias" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Limpiar
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search"></i> Filtrar
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- TABLA DE AUDITORÍAS -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-list"></i> Resultados (<%= auditorias.length %>)
+      </div>
+      
+      <% if (auditorias.length === 0) { %>
+        <div style="text-align: center; padding: 40px;">
+          <div style="font-size: 64px; color: #ccc; margin-bottom: 15px;">
+            <i class="fas fa-inbox"></i>
+          </div>
+          <p class="text-muted">No se encontraron auditorías con los filtros seleccionados.</p>
+          <a href="/auditorias/nueva" class="btn btn-primary" style="margin-top: 15px;">
+            <i class="fas fa-plus"></i> Crear Primera Auditoría
+          </a>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Fecha Visita</th>
+                <th>Hora</th>
+                <th>Estación</th>
+                <th>Auditor</th>
+                <th>Calificación</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% auditorias.forEach(aud => { %>
+              <tr>
+                <td><strong>#<%= aud.id %></strong></td>
+                <td><%= new Date(aud.fecha_visita).toLocaleDateString('es-HN') %></td>
+                <td><%= aud.hora_visita %></td>
+                <td>
+                  <%= aud.estacion_nombre %><br>
+                  <small class="text-muted"><%= aud.estacion_codigo %></small>
+                </td>
+                <td><%= aud.auditor_nombre %></td>
+                <td>
+                  <span class="badge <%= aud.calificacion_general >= 80 ? 'badge-success' : aud.calificacion_general >= 60 ? 'badge-warning' : 'badge-danger' %>">
+                    <%= aud.calificacion_general %>%
+                  </span>
+                </td>
+                <td>
+                  <% if (aud.estado === 'completada') { %>
+                    <span class="badge badge-success">Completada</span>
+                  <% } else if (aud.estado === 'revisada') { %>
+                    <span class="badge badge-info">Revisada</span>
+                  <% } else { %>
+                    <span class="badge badge-warning">Borrador</span>
+                  <% } %>
+                </td>
+                <td>
+                  <a href="/auditorias/<%= aud.id %>" class="btn btn-sm btn-primary" title="Ver Detalle">
+                    <i class="fas fa-eye"></i>
+                  </a>
+                  <% if (user.userRole === 'admin') { %>
+                  <button class="btn btn-sm btn-secondary" data-eliminar-auditoria="<%= aud.id %>" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                  <% } %>
+                </td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

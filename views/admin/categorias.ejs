@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-list-check"></i> Gestión de Checklist
+      </h1>
+      <button class="btn btn-primary" data-toggle-modal="nueva-categoria">
+        <i class="fas fa-plus"></i> Nueva Categoría
+      </button>
+    </div>
+    
+    <% if (categorias.length === 0) { %>
+      <div class="card">
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <i class="fas fa-list-check" style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;"></i>
+          <p style="font-size: 18px;">No hay categorías configuradas</p>
+          <p>Ejecuta la migración: <code>npm run migrate-v2</code></p>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Ítems</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% categorias.forEach(cat => { %>
+            <tr>
+              <td><strong><%= cat.orden %></strong></td>
+              <td><%= cat.nombre %></td>
+              <td><%= cat.descripcion || '-' %></td>
+              <td><%= cat.total_items %> (<%= cat.items_activos %> activos)</td>
+              <td>
+                <span class="badge <%= cat.activo ? 'badge-success' : 'badge-danger' %>">
+                  <%= cat.activo ? 'Activa' : 'Inactiva' %>
+                </span>
+              </td>
+              <td>
+                <a href="/admin/categorias/<%= cat.id %>/items" class="btn btn-sm btn-secondary" title="Ver ítems">
+                  <i class="fas fa-list"></i>
+                </a>
+              </td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+  
+  <!-- Modal: Nueva Categoría -->
+  <div id="modal-nueva-categoria" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Nueva Categoría</h2>
+        <button class="modal-close" onclick="cerrarModal('modal-nueva-categoria')">&times;</button>
+      </div>
+      <form action="/admin/categorias/nueva" method="POST">
+        <div class="form-group">
+          <label>Nombre de la Categoría *</label>
+          <input type="text" name="nombre" required class="form-control" placeholder="Ej: CAFETERÍA">
+        </div>
+        
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea name="descripcion" class="form-control" rows="3" placeholder="Descripción de la categoría (opcional)"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Orden</label>
+          <input type="number" name="orden" value="<%= categorias.length + 1 %>" min="1" class="form-control">
+          <small class="form-text">Orden en que aparecerá la categoría en las auditorías</small>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-nueva-categoria')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Categoría</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  
+  <script>
+  // Abrir modal de nueva categoría
+  document.querySelectorAll('[data-toggle-modal="nueva-categoria"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('modal-nueva-categoria').style.display = 'flex';
+    });
+  });
+  
+  // Cerrar modal
+  function cerrarModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+  
+  // Cerrar modal al hacer clic fuera
+  window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+      e.target.style.display = 'none';
+    }
+  });
+  </script>
+</body>
+</html>

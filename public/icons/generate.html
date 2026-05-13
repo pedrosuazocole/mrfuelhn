@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Generar Íconos</title></head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+sizes.forEach(size => {
+  canvas.width = size;
+  canvas.height = size;
+  
+  // Fondo rojo Texaco
+  ctx.fillStyle = '#ED1C24';
+  ctx.fillRect(0, 0, size, size);
+  
+  // Estrella blanca
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = `bold ${size * 0.5}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⭐', size / 2, size / 2.2);
+  
+  // Texto
+  ctx.font = `bold ${size * 0.12}px Arial`;
+  ctx.fillText('Mr. Fuel', size / 2, size * 0.85);
+  
+  // Descargar
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `icon-${size}x${size}.png`;
+    a.click();
+  });
+});
+</script>
+</body>
+</html>
