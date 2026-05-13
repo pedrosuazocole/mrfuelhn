@@ -484,22 +484,20 @@ exports.obtenerEstadisticas = async (req, res) => {
 };
 
 /**
- * Generar PDF de auditoría
+ * Generar reporte PDF (HTML imprimible)
  */
 exports.generarPDF = async (req, res) => {
   try {
     const { id } = req.params;
     const { generarPDFAuditoria } = require('../utils/pdfGenerator');
     
-    // Generar PDF
-    const pdfPath = await generarPDFAuditoria(id);
+    // Obtener datos
+    const { auditoria, evaluaciones } = await generarPDFAuditoria(id);
     
-    // Enviar archivo
-    res.download(pdfPath, `auditoria-${id}.pdf`, (err) => {
-      if (err) {
-        console.error('Error al enviar PDF:', err);
-        res.status(500).send('Error al descargar PDF');
-      }
+    // Renderizar HTML imprimible
+    res.render('auditorias-v2/pdf', {
+      auditoria,
+      evaluaciones
     });
     
   } catch (error) {
