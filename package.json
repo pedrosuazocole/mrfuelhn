@@ -29,8 +29,7 @@
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.43",
     "exceljs": "^4.3.0",
-    "pdfkit": "^0.15.0",
-    "html-pdf-node": "^1.0.8"
+    "pdfkit": "^0.15.0"
   },
   "optionalDependencies": {
     "resend": "^3.0.0"
