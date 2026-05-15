@@ -7,22 +7,106 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .categoria-section {
+    .btn-selector {
+      padding: 30px;
+      border: 3px solid #ddd;
+      background: white;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+    }
+    
+    .btn-selector:hover {
+      border-color: #ED1C24;
+      box-shadow: 0 4px 12px rgba(237, 28, 36, 0.2);
+      transform: translateY(-2px);
+    }
+    
+    .btn-selector.selected {
+      border-color: #ED1C24;
+      background: #fff5f5;
+      box-shadow: 0 4px 12px rgba(237, 28, 36, 0.3);
+    }
+    
+    .btn-selector.selected i {
+      color: #ED1C24;
+    }
+    
+    .btn-selector.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+      background: #f5f5f5;
+    }
+    
+    .grupo-categoria {
       background: white;
       border-radius: 8px;
-      padding: 20px;
       margin-bottom: 20px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
     }
-    .categoria-header {
+    
+    .grupo-header {
       background: #ED1C24;
       color: white;
-      padding: 15px;
-      margin: -20px -20px 20px -20px;
-      border-radius: 8px 8px 0 0;
-      font-size: 20px;
+      padding: 20px;
+      font-size: 22px;
       font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
     }
+    
+    .grupo-header:hover {
+      background: #D01920;
+    }
+    
+    .grupo-header i {
+      transition: transform 0.3s;
+    }
+    
+    .grupo-header.collapsed i {
+      transform: rotate(-90deg);
+    }
+    
+    .grupo-contenido {
+      max-height: 5000px;
+      transition: max-height 0.3s ease-out;
+      overflow: visible;
+    }
+    
+    .grupo-contenido.collapsed {
+      max-height: 0;
+      overflow: hidden;
+    }
+    
+    .subcategoria-section {
+      border-bottom: 2px solid #f0f0f0;
+      padding: 20px;
+    }
+    
+    .subcategoria-section:last-child {
+      border-bottom: none;
+    }
+    
+    .subcategoria-titulo {
+      font-size: 18px;
+      font-weight: bold;
+      color: #ED1C24;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #ED1C24;
+    }
+    
     .item-row {
       display: grid;
       grid-template-columns: 1fr auto 120px;
@@ -31,62 +115,69 @@
       padding: 15px;
       border-bottom: 1px solid #eee;
     }
+    
     .item-row:last-child {
       border-bottom: none;
     }
+    
     .item-name {
       font-weight: 500;
       color: #333;
     }
+    
     .item-controls {
       display: flex;
       gap: 10px;
       align-items: center;
     }
-    .cumple-switch {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 34px;
+    
+    /* NUEVO: Checkboxes Si/No */
+    .cumple-buttons {
+      display: flex;
+      gap: 5px;
     }
-    .cumple-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .slider {
-      position: absolute;
+    
+    .btn-cumple {
+      padding: 8px 16px;
+      border: 2px solid #ddd;
+      background: white;
+      border-radius: 6px;
       cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #dc3545;
-      transition: .4s;
-      border-radius: 34px;
+      font-weight: bold;
+      transition: all 0.2s;
+      font-size: 14px;
     }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
+    
+    .btn-cumple:hover {
+      border-color: #999;
     }
-    input:checked + .slider {
-      background-color: #28a745;
+    
+    .btn-cumple.si {
+      color: #28a745;
+      border-color: #28a745;
     }
-    input:checked + .slider:before {
-      transform: translateX(26px);
+    
+    .btn-cumple.si.active {
+      background: #28a745;
+      color: white;
     }
+    
+    .btn-cumple.no {
+      color: #dc3545;
+      border-color: #dc3545;
+    }
+    
+    .btn-cumple.no.active {
+      background: #dc3545;
+      color: white;
+    }
+    
     .fotos-container {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }
+    
     .foto-preview {
       width: 80px;
       height: 80px;
@@ -184,58 +275,104 @@
         </div>
       </div>
       
-      <!-- Checklist por Categorías -->
-      <% categorias.forEach(categoria => { %>
-      <div class="categoria-section">
-        <div class="categoria-header">
-          <%= categoria.nombre %>
+      <!-- Selector de Área a Evaluar -->
+      <div class="card">
+        <div class="card-header">🎯 Selecciona el Área a Evaluar</div>
+        <div style="padding: 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <button type="button" class="btn-selector" onclick="seleccionarArea('pista')" id="btn-pista">
+              <i class="fas fa-gas-pump" style="font-size: 32px; margin-bottom: 10px;"></i>
+              <div style="font-size: 20px; font-weight: bold;">PISTA</div>
+              <div style="font-size: 14px; opacity: 0.8;">Evaluar área de pista</div>
+            </button>
+            <button type="button" class="btn-selector" onclick="seleccionarArea('tienda')" id="btn-tienda">
+              <i class="fas fa-store" style="font-size: 32px; margin-bottom: 10px;"></i>
+              <div style="font-size: 20px; font-weight: bold;">TIENDA</div>
+              <div style="font-size: 14px; opacity: 0.8;">Evaluar tienda, bodega y cocina</div>
+            </button>
+          </div>
+          <input type="hidden" name="area_evaluada" id="area_evaluada" required>
+        </div>
+      </div>
+      
+      <!-- Checklist por Áreas (inicialmente ocultos) -->
+      <% grupos.forEach(grupo => { %>
+      <div class="grupo-categoria" id="grupo-<%= grupo.id %>" style="display: none;">
+        <div class="grupo-header" onclick="toggleGrupo('<%= grupo.id %>')">
+          <span><%= grupo.nombre %></span>
+          <i class="fas fa-chevron-down" id="icon-<%= grupo.id %>"></i>
         </div>
         
-        <% categoria.items.forEach(item => { %>
-        <div class="item-row">
-          <div class="item-name"><%= item.nombre %></div>
-          
-          <div class="item-controls">
-            <label class="cumple-switch">
-              <input type="checkbox" class="item-cumple" data-item-id="<%= item.id %>">
-              <span class="slider"></span>
-            </label>
-            <button type="button" class="btn btn-sm btn-secondary" data-toggle-observacion="<%= item.id %>">
-              <i class="fas fa-comment"></i>
-            </button>
-            <button type="button" class="btn btn-sm btn-secondary" data-toggle-fotos="<%= item.id %>">
-              <i class="fas fa-camera"></i> <span class="foto-count" data-count-for="<%= item.id %>">0</span>
-            </button>
-          </div>
-          
-          <div></div>
-          
-          <!-- Observación (oculta por defecto) -->
-          <div class="observacion-container" id="obs-<%= item.id %>" style="display: none; grid-column: 1 / -1;">
-            <textarea class="form-control" placeholder="Observación..." rows="2" data-observacion-item="<%= item.id %>"></textarea>
-          </div>
-          
-          <!-- Fotos (ocultas por defecto) -->
-          <div class="fotos-section" id="fotos-<%= item.id %>" style="display: none; grid-column: 1 / -1;">
-            <p style="margin: 5px 0; color: #666; font-size: 14px;">
-              <i class="fas fa-info-circle"></i> Hasta <%= item.max_fotos %> fotos
-            </p>
-            <div class="fotos-container" data-fotos-container="<%= item.id %>">
-              <% for(let i = 1; i <= item.max_fotos; i++) { %>
-              <div class="foto-preview" data-foto-slot="<%= item.id %>-<%= i %>">
-                <i class="fas fa-camera" style="font-size: 24px; color: #ccc;"></i>
-                <input type="file" 
-                       accept="image/*" 
-                       capture="environment"
-                       style="display: none;" 
-                       data-foto-input="<%= item.id %>-<%= i %>"
-                       name="fotos_item_<%= item.id %>">
+        <div class="grupo-contenido" id="contenido-<%= grupo.id %>">
+          <% grupo.categorias.forEach(categoria => { %>
+          <div class="subcategoria-section">
+            <% if (grupo.categorias.length > 1) { %>
+            <div class="subcategoria-titulo"><%= categoria.nombre %></div>
+            <% } %>
+            
+            <% categoria.items.forEach(item => { %>
+            <div class="item-row">
+              <div class="item-name"><%= item.nombre %></div>
+              
+              <div class="item-controls">
+                <!-- Botones Si/No en lugar de switch -->
+                <div class="cumple-buttons">
+                  <button type="button" 
+                          class="btn-cumple si" 
+                          data-item-id="<%= item.id %>" 
+                          data-valor="si"
+                          onclick="marcarCumplimiento('<%= item.id %>', 'si')">
+                    <i class="fas fa-check"></i> Sí
+                  </button>
+                  <button type="button" 
+                          class="btn-cumple no" 
+                          data-item-id="<%= item.id %>" 
+                          data-valor="no"
+                          onclick="marcarCumplimiento('<%= item.id %>', 'no')">
+                    <i class="fas fa-times"></i> No
+                  </button>
+                </div>
+                <input type="hidden" class="item-cumple-value" data-item-id="<%= item.id %>" value="">
+                
+                <button type="button" class="btn btn-sm btn-secondary" data-toggle-observacion="<%= item.id %>">
+                  <i class="fas fa-comment"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" data-toggle-fotos="<%= item.id %>">
+                  <i class="fas fa-camera"></i> <span class="foto-count" data-count-for="<%= item.id %>">0</span>
+                </button>
               </div>
-              <% } %>
+              
+              <div></div>
+              
+              <!-- Observación (oculta por defecto) -->
+              <div class="observacion-container" id="obs-<%= item.id %>" style="display: none; grid-column: 1 / -1;">
+                <textarea class="form-control" placeholder="Observación..." rows="2" data-observacion-item="<%= item.id %>"></textarea>
+              </div>
+              
+              <!-- Fotos (ocultas por defecto) -->
+              <div class="fotos-section" id="fotos-<%= item.id %>" style="display: none; grid-column: 1 / -1;">
+                <p style="margin: 5px 0; color: #666; font-size: 14px;">
+                  <i class="fas fa-info-circle"></i> Hasta <%= item.max_fotos %> fotos
+                </p>
+                <div class="fotos-container" data-fotos-container="<%= item.id %>">
+                  <% for(let i = 1; i <= item.max_fotos; i++) { %>
+                  <div class="foto-preview" data-foto-slot="<%= item.id %>-<%= i %>">
+                    <i class="fas fa-camera" style="font-size: 24px; color: #ccc;"></i>
+                    <input type="file" 
+                           accept="image/*" 
+                           capture="environment"
+                           style="display: none;" 
+                           data-foto-input="<%= item.id %>-<%= i %>"
+                           name="fotos_item_<%= item.id %>">
+                  </div>
+                  <% } %>
+                </div>
+              </div>
             </div>
+            <% }); %>
           </div>
+          <% }); %>
         </div>
-        <% }); %>
       </div>
       <% }); %>
       

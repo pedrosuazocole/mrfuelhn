@@ -78,8 +78,11 @@
                 </span>
               </td>
               <td>
-                <button class="btn btn-sm btn-secondary" title="Editar" onclick="alert('Funcionalidad de edición próximamente')">
+                <button class="btn btn-sm btn-secondary" title="Editar" onclick="editarItem(<%= item.id %>, '<%= item.nombre %>', '<%= item.descripcion || '' %>', <%= item.max_fotos %>, <%= item.orden %>)">
                   <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" title="Eliminar" onclick="eliminarItem(<%= item.id %>, '<%= item.nombre %>')">
+                  <i class="fas fa-trash"></i>
                 </button>
               </td>
             </tr>
@@ -100,7 +103,136 @@
     </div>
   </main>
   
+  <!-- Modal: Nuevo Ítem -->
+  <div id="modal-nuevo-item" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Nuevo Ítem</h2>
+        <button class="modal-close" onclick="cerrarModal('modal-nuevo-item')">&times;</button>
+      </div>
+      <form action="/admin/items/nuevo" method="POST">
+        <input type="hidden" name="categoria_id" value="<%= categoria.id %>">
+        
+        <div class="form-group">
+          <label>Nombre del Ítem *</label>
+          <input type="text" name="nombre" required class="form-control" placeholder="Ej: Uniformes">
+        </div>
+        
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea name="descripcion" class="form-control" rows="3" placeholder="Descripción detallada (opcional)"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Máximo de Fotos</label>
+          <input type="number" name="max_fotos" value="3" min="0" max="10" class="form-control">
+        </div>
+        
+        <div class="form-group">
+          <label>Orden</label>
+          <input type="number" name="orden" value="<%= items.length + 1 %>" min="1" class="form-control">
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-nuevo-item')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Ítem</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Modal: Editar Ítem -->
+  <div id="modal-editar-item" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Ítem</h2>
+        <button class="modal-close" onclick="cerrarModal('modal-editar-item')">&times;</button>
+      </div>
+      <form id="form-editar-item" method="POST">
+        <div class="form-group">
+          <label>Nombre del Ítem *</label>
+          <input type="text" id="edit-nombre" name="nombre" required class="form-control">
+        </div>
+        
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea id="edit-descripcion" name="descripcion" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Máximo de Fotos</label>
+          <input type="number" id="edit-max-fotos" name="max_fotos" value="3" min="0" max="10" class="form-control">
+        </div>
+        
+        <div class="form-group">
+          <label>Orden</label>
+          <input type="number" id="edit-orden" name="orden" min="1" class="form-control">
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-editar-item')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Actualizar Ítem</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
   <%- include('../partials/footer') %>
   <script src="/js/main.js"></script>
+  
+  <script>
+  // Abrir modal de nuevo ítem
+  document.querySelectorAll('[data-toggle-modal="nuevo-item"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('modal-nuevo-item').style.display = 'flex';
+    });
+  });
+  
+  // Cerrar modal
+  function cerrarModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+  
+  // Cerrar modal al hacer clic fuera
+  window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+      e.target.style.display = 'none';
+    }
+  });
+  
+  // Editar ítem
+  function editarItem(id, nombre, descripcion, maxFotos, orden) {
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-descripcion').value = descripcion || '';
+    document.getElementById('edit-max-fotos').value = maxFotos;
+    document.getElementById('edit-orden').value = orden;
+    document.getElementById('form-editar-item').action = `/admin/items/${id}/editar`;
+    document.getElementById('modal-editar-item').style.display = 'flex';
+  }
+  
+  // Eliminar ítem
+  function eliminarItem(id, nombre) {
+    if (confirm(`¿Estás seguro de eliminar el ítem "${nombre}"?`)) {
+      fetch(`/admin/items/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          alert('Ítem eliminado exitosamente');
+          location.reload();
+        } else {
+          alert('Error al eliminar el ítem');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar el ítem');
+      });
+    }
+  }
+  </script>
 </body>
 </html>

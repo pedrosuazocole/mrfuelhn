@@ -23,6 +23,12 @@ router.post('/nueva', upload.any(), auditoriaV2Controller.crearAuditoria);
 // Ver detalle
 router.get('/:id', auditoriaV2Controller.verDetalle);
 
+// Generar PDF
+router.get('/:id/pdf', auditoriaV2Controller.generarPDF);
+
+// Obtener números WhatsApp activos para una auditoría
+router.get('/:id/whatsapp-numeros', auditoriaV2Controller.obtenerNumerosWhatsApp);
+
 // Eliminar (solo admin)
 router.delete('/:id', isAdmin, auditoriaV2Controller.eliminarAuditoria);
 

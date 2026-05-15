@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-ticket-alt"></i> <%= titulo %>
+      </h1>
+      <a href="/tickets" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+      </a>
+    </div>
+    
+    <div class="card">
+      <form id="formTicket" enctype="multipart/form-data">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <!-- Columna izquierda -->
+          <div>
+            <div class="form-group">
+              <label>Estación *</label>
+              <select name="estacion_id" required class="form-control">
+                <option value="">Seleccionar estación...</option>
+                <% estaciones.forEach(est => { %>
+                <option value="<%= est.id %>"><%= est.nombre %></option>
+                <% }); %>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Tipo de Ticket *</label>
+              <select name="tipo" required class="form-control">
+                <option value="">Seleccionar tipo...</option>
+                <option value="Falla Equipo">Falla de Equipo</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Limpieza">Limpieza</option>
+                <option value="Reparación">Reparación</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Prioridad *</label>
+              <select name="prioridad" required class="form-control">
+                <option value="baja">Baja</option>
+                <option value="media" selected>Media</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Área</label>
+              <select name="area" class="form-control">
+                <option value="">Seleccionar área...</option>
+                <option value="Pista">Pista</option>
+                <option value="Tienda">Tienda</option>
+                <option value="Bodega">Bodega</option>
+                <option value="Cocina">Cocina</option>
+                <option value="Baños">Baños</option>
+                <option value="Oficina">Oficina</option>
+                <option value="Exterior">Exterior</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Columna derecha -->
+          <div>
+            <div class="form-group">
+              <label>Título del Ticket *</label>
+              <input type="text" name="titulo" required class="form-control" placeholder="Ej: Bomba #3 sin funcionar">
+            </div>
+            
+            <div class="form-group">
+              <label>Descripción Detallada *</label>
+              <textarea name="descripcion" required class="form-control" rows="5" placeholder="Describe el problema con el mayor detalle posible..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label>Asignar a</label>
+              <select name="asignado_a" class="form-control">
+                <option value="">Sin asignar</option>
+                <% usuarios.forEach(usr => { %>
+                <option value="<%= usr.id %>"><%= usr.nombre %></option>
+                <% }); %>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Costo Estimado (L)</label>
+              <input type="number" name="costo_estimado" class="form-control" step="0.00001" min="0" placeholder="0.00000">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Foto de evidencia -->
+        <div class="form-group">
+          <label>Foto de Evidencia</label>
+          <input type="file" name="foto_evidencia" accept="image/*" capture="environment" class="form-control" id="fotoInput">
+          <small class="form-text">Opcional. Tamaño máximo: 5MB</small>
+        </div>
+        
+        <div id="preview" style="margin-top: 10px; display: none;">
+          <img id="previewImg" style="max-width: 300px; border-radius: 8px;" />
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+          <button type="submit" class="btn btn-primary btn-lg" id="btnGuardar">
+            <i class="fas fa-save"></i> Crear Ticket
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  
+  <script>
+    // Preview de foto
+    document.getElementById('fotoInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('previewImg').src = e.target.result;
+          document.getElementById('preview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Enviar formulario
+    document.getElementById('formTicket').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const btnGuardar = document.getElementById('btnGuardar');
+      btnGuardar.disabled = true;
+      btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+      
+      try {
+        const formData = new FormData(e.target);
+        
+        const response = await fetch('/tickets/nuevo', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ Ticket creado exitosamente');
+          window.location.href = `/tickets/${result.ticketId}`;
+        } else {
+          throw new Error(result.mensaje || 'Error al crear ticket');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error: ' + error.message);
+        btnGuardar.disabled = false;
+        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Crear Ticket';
+      }
+    });
+  </script>
+</body>
+</html>

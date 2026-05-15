@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Auditoria #<%= auditoria.id %></title>
+  <style>
+    @media print {
+      @page { margin: 0.5in; }
+      body { margin: 0; }
+      .no-print { display: none; }
+    }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      color: #333;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 3px solid #ED1C24;
+      padding-bottom: 20px;
+    }
+    .header h1 {
+      color: #ED1C24;
+      margin: 0;
+      font-size: 24px;
+    }
+    .header p {
+      margin: 5px 0;
+      color: #666;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .section h2 {
+      color: #ED1C24;
+      font-size: 18px;
+      border-bottom: 2px solid #ED1C24;
+      padding-bottom: 5px;
+      margin-bottom: 15px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .info-label {
+      font-weight: bold;
+    }
+    .calificacion {
+      text-align: center;
+      font-size: 32px;
+      color: #ED1C24;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .categoria {
+      margin-bottom: 30px;
+    }
+    .categoria h3 {
+      background: #ED1C24;
+      color: white;
+      padding: 10px;
+      margin: 0 0 15px 0;
+      font-size: 16px;
+    }
+    .item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .item-nombre {
+      flex: 1;
+    }
+    .item-estado {
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .cumple {
+      background: #d1e7dd;
+      color: #0f5132;
+    }
+    .no-cumple {
+      background: #f8d7da;
+      color: #842029;
+    }
+    .observacion {
+      color: #666;
+      font-size: 12px;
+      margin-top: 5px;
+      padding-left: 20px;
+      font-style: italic;
+    }
+    .fotos-item {
+      margin-top: 10px;
+      padding-left: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .fotos-item img {
+      max-width: 150px;
+      max-height: 150px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 10px;
+      color: #666;
+      border-top: 1px solid #ddd;
+      padding-top: 20px;
+    }
+    .btn-print {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #ED1C24;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    .btn-print:hover {
+      background: #D01920;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" class="btn-print no-print">Imprimir / Guardar PDF</button>
+  
+  <div class="header">
+    <h1>AUDITORIA TEXACO</h1>
+    <p>Mr. Fuel - Sistema de Auditorias</p>
+  </div>
+  
+  <div class="section">
+    <h2>INFORMACION GENERAL</h2>
+    <div class="info-grid">
+      <div class="info-label">Estacion:</div>
+      <div><%= auditoria.estacion_nombre %></div>
+      
+      <div class="info-label">Direccion:</div>
+      <div><%= auditoria.estacion_direccion || 'N/A' %></div>
+      
+      <div class="info-label">Fecha:</div>
+      <div><%= new Date(auditoria.fecha_visita).toLocaleDateString('es-HN') %></div>
+      
+      <div class="info-label">Hora:</div>
+      <div><%= auditoria.hora_visita %></div>
+      
+      <div class="info-label">Auditor:</div>
+      <div><%= auditoria.auditor_nombre %></div>
+    </div>
+    
+    <div class="calificacion">
+      Calificacion: <%= auditoria.calificacion_general %>%
+    </div>
+  </div>
+  
+  <% if (Object.keys(evaluaciones).length > 0) { %>
+  <div class="section">
+    <h2>EVALUACION DETALLADA</h2>
+    
+    <% for (const categoria in evaluaciones) { %>
+    <div class="categoria">
+      <h3><%= categoria %></h3>
+      
+      <% evaluaciones[categoria].forEach(item => { %>
+      <div class="item">
+        <div class="item-nombre">• <%= item.item_nombre %></div>
+        <div class="item-estado <%= item.cumple ? 'cumple' : 'no-cumple' %>">
+          <%= item.cumple ? '✓ Cumple' : '✗ No Cumple' %>
+        </div>
+      </div>
+      <% if (item.observacion && item.observacion.trim()) { %>
+      <div class="observacion"><%= item.observacion %></div>
+      <% } %>
+      <% if (item.fotos && item.fotos.length > 0) { %>
+      <div class="fotos-item">
+        <% item.fotos.forEach(foto => { %>
+        <img src="<%= foto %>" alt="Evidencia">
+        <% }); %>
+      </div>
+      <% } %>
+      <% }); %>
+    </div>
+    <% } %>
+  </div>
+  <% } %>
+  
+  <% if (auditoria.observaciones_generales && auditoria.observaciones_generales.trim()) { %>
+  <div class="section">
+    <h2>OBSERVACIONES GENERALES</h2>
+    <p><%= auditoria.observaciones_generales %></p>
+  </div>
+  <% } %>
+  
+  <% if (auditoria.recomendaciones && auditoria.recomendaciones.trim()) { %>
+  <div class="section">
+    <h2>RECOMENDACIONES</h2>
+    <p><%= auditoria.recomendaciones %></p>
+  </div>
+  <% } %>
+  
+  <div class="footer">
+    <p>© 2026-2027 Mr. Fuel v2.0 - Sistema de Auditorias Texaco</p>
+    <p>Metric Solutions & POS - WhatsApp: +504 9450 2710</p>
+  </div>
+  
+  <script>
+    // Auto-imprimir en móviles si viene de WhatsApp
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    }
+  </script>
+</body>
+</html>

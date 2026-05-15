@@ -84,6 +84,9 @@
         <a href="/auditorias-v2" class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i> Volver
         </a>
+        <button class="btn btn-success" onclick="enviarPorWhatsApp()">
+          <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
+        </button>
         <% if (user.userRole === 'admin') { %>
         <button class="btn btn-secondary" data-eliminar-auditoria="<%= auditoria.id %>">
           <i class="fas fa-trash"></i> Eliminar
@@ -234,16 +237,21 @@
   <script src="/js/main.js"></script>
   <script>
     // Eliminar auditoría
-    document.addEventListener('click', async (e) => {
-      if (e.target.matches('[data-eliminar-auditoria]') || e.target.closest('[data-eliminar-auditoria]')) {
+    // Eliminar auditoría
+    const btnEliminar = document.querySelector('[data-eliminar-auditoria]');
+    if (btnEliminar) {
+      btnEliminar.addEventListener('click', async (e) => {
         e.preventDefault();
+        e.stopPropagation();
         
-        const btn = e.target.closest('[data-eliminar-auditoria]');
-        const auditoriaId = btn.dataset.eliminarAuditoria;
+        const auditoriaId = btnEliminar.dataset.eliminarAuditoria;
         
-        if (!confirm('¿Estás seguro de eliminar esta auditoría? Esta acción no se puede deshacer.')) {
+        if (!confirm('¿Estás seguro de eliminar esta auditoría?\n\nEsta acción no se puede deshacer.')) {
           return;
         }
+        
+        btnEliminar.disabled = true;
+        btnEliminar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
         
         try {
           const response = await fetch(`/auditorias-v2/${auditoriaId}`, {
@@ -254,17 +262,90 @@
           const result = await response.json();
           
           if (result.success) {
-            alert('✅ Auditoría eliminada correctamente');
             window.location.href = '/auditorias-v2';
           } else {
             alert('❌ Error: ' + result.mensaje);
+            btnEliminar.disabled = false;
+            btnEliminar.innerHTML = '<i class="fas fa-trash"></i> Eliminar';
           }
         } catch (error) {
           console.error('Error:', error);
           alert('❌ Error al eliminar auditoría');
+          btnEliminar.disabled = false;
+          btnEliminar.innerHTML = '<i class="fas fa-trash"></i> Eliminar';
         }
+      });
+    }
+    
+    // Función para enviar por WhatsApp
+    async function enviarPorWhatsApp() {
+      try {
+        // Obtener números activos
+        const response = await fetch('/auditorias-v2/<%= auditoria.id %>/whatsapp-numeros');
+        const data = await response.json();
+        
+        if (!data.success || data.numeros.length === 0) {
+          if (confirm('No hay números de WhatsApp configurados.\n\n¿Deseas configurar números ahora?')) {
+            window.location.href = '/admin/whatsapp';
+          }
+          return;
+        }
+        
+        // Generar URL del PDF
+        const pdfUrl = `${window.location.origin}/auditorias-v2/<%= auditoria.id %>/pdf`;
+        
+        // Crear el mensaje para WhatsApp
+        const mensaje = encodeURIComponent(
+          `🔍 *AUDITORÍA TEXACO*\n\n` +
+          `📍 Estación: <%= auditoria.estacion_nombre %>\n` +
+          `📅 Fecha: <%= new Date(auditoria.fecha_visita).toLocaleDateString('es-HN') %>\n` +
+          `⏰ Hora: <%= auditoria.hora_visita %>\n` +
+          `📊 Calificación: <%= auditoria.calificacion %>%\n` +
+          `👤 Auditor: <%= auditoria.auditor_nombre %>\n\n` +
+          `📄 Descargar PDF completo:\n` +
+          `${pdfUrl}`
+        );
+        
+        // Si hay un solo número, enviar directamente
+        if (data.numeros.length === 1) {
+          const numero = data.numeros[0].numero.replace(/[^0-9]/g, '');
+          window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
+          return;
+        }
+        
+        // Si hay múltiples números, mostrar selector
+        const opciones = data.numeros.map((n, i) => 
+          `${i + 1}. ${n.nombre} (${n.numero})`
+        ).join('\n');
+        
+        const seleccion = prompt(
+          `Selecciona un número para enviar:\n\n${opciones}\n\nIngresa el número (1-${data.numeros.length}) o "0" para enviar a todos:`
+        );
+        
+        if (seleccion === null) return;
+        
+        const indice = parseInt(seleccion);
+        
+        if (indice === 0) {
+          // Enviar a todos
+          data.numeros.forEach(n => {
+            const numero = n.numero.replace(/[^0-9]/g, '');
+            window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
+          });
+          alert('✅ Abriendo WhatsApp para todos los números...');
+        } else if (indice >= 1 && indice <= data.numeros.length) {
+          // Enviar a uno específico
+          const numeroSeleccionado = data.numeros[indice - 1].numero.replace(/[^0-9]/g, '');
+          window.open(`https://wa.me/${numeroSeleccionado}?text=${mensaje}`, '_blank');
+        } else {
+          alert('❌ Selección inválida');
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al obtener números de WhatsApp');
       }
-    });
+    }
   </script>
 </body>
 </html>

@@ -2,6 +2,70 @@
  * JAVASCRIPT PARA AUDITORÍA V2.0 - MR. FUEL
  */
 
+// Función para seleccionar área (PISTA o TIENDA)
+function seleccionarArea(area) {
+  // Ocultar todos los grupos
+  document.querySelectorAll('.grupo-categoria').forEach(grupo => {
+    grupo.style.display = 'none';
+  });
+  
+  // Quitar selección de botones
+  document.querySelectorAll('.btn-selector').forEach(btn => {
+    btn.classList.remove('selected');
+    btn.classList.remove('disabled');
+  });
+  
+  // Marcar botón seleccionado
+  const btnSeleccionado = document.getElementById(`btn-${area}`);
+  btnSeleccionado.classList.add('selected');
+  
+  // Bloquear el botón NO seleccionado
+  const otraArea = area === 'pista' ? 'tienda' : 'pista';
+  const btnBloqueado = document.getElementById(`btn-${otraArea}`);
+  btnBloqueado.classList.add('disabled');
+  
+  // Mostrar grupo seleccionado
+  document.getElementById(`grupo-${area}`).style.display = 'block';
+  
+  // Guardar área evaluada
+  document.getElementById('area_evaluada').value = area;
+  
+  // Scroll suave al checklist
+  setTimeout(() => {
+    document.getElementById(`grupo-${area}`).scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start' 
+    });
+  }, 100);
+}
+
+// Función para toggle de grupos (debe estar disponible globalmente para onclick)
+function toggleGrupo(grupoId) {
+  const contenido = document.getElementById(`contenido-${grupoId}`);
+  const icon = document.getElementById(`icon-${grupoId}`);
+  const header = document.querySelector(`[onclick="toggleGrupo('${grupoId}')"]`);
+  
+  contenido.classList.toggle('collapsed');
+  header.classList.toggle('collapsed');
+}
+
+// Función para marcar cumplimiento Si/No
+function marcarCumplimiento(itemId, valor) {
+  // Obtener ambos botones del item
+  const botones = document.querySelectorAll(`[data-item-id="${itemId}"][data-valor]`);
+  const inputHidden = document.querySelector(`.item-cumple-value[data-item-id="${itemId}"]`);
+  
+  // Quitar active de todos los botones del item
+  botones.forEach(btn => btn.classList.remove('active'));
+  
+  // Agregar active al botón clickeado
+  const botonClickeado = document.querySelector(`[data-item-id="${itemId}"][data-valor="${valor}"]`);
+  botonClickeado.classList.add('active');
+  
+  // Guardar valor en input hidden (1 = cumple, 0 = no cumple)
+  inputHidden.value = valor === 'si' ? '1' : '0';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('📋 Inicializando formulario de auditoría v2.0...');
   
@@ -178,14 +242,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
     
     try {
-      // Recopilar evaluaciones
+      // Recopilar evaluaciones (ahora desde inputs hidden)
       const evaluaciones = {};
-      document.querySelectorAll('.item-cumple').forEach(checkbox => {
-        const itemId = checkbox.dataset.itemId;
+      document.querySelectorAll('.item-cumple-value').forEach(input => {
+        const itemId = input.dataset.itemId;
         const observacionTextarea = document.querySelector(`[data-observacion-item="${itemId}"]`);
+        const valorCumple = input.value; // '1' = cumple, '0' = no cumple, '' = sin evaluar
         
         evaluaciones[itemId] = {
-          cumple: checkbox.checked,
+          cumple: valorCumple === '1',
           observacion: observacionTextarea ? observacionTextarea.value.trim() : ''
         };
       });

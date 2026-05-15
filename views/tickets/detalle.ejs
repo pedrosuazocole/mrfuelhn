@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-ticket-alt"></i> Ticket #<%= ticket.id %>
+      </h1>
+      <div>
+        <a href="/tickets" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Volver
+        </a>
+        <% if (user.userRole === 'admin') { %>
+        <button class="btn btn-danger" onclick="eliminarTicket(<%= ticket.id %>)">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
+        <% } %>
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+      <!-- Información principal -->
+      <div>
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span><%= ticket.titulo %></span>
+            <% 
+              let prioridadColor = '';
+              if (ticket.prioridad === 'urgente') prioridadColor = 'badge-danger';
+              else if (ticket.prioridad === 'alta') prioridadColor = 'badge-warning';
+              else if (ticket.prioridad === 'media') prioridadColor = 'badge-info';
+              else prioridadColor = 'badge-secondary';
+            %>
+            <span class="badge <%= prioridadColor %>"><%= ticket.prioridad.toUpperCase() %></span>
+          </div>
+          
+          <div style="padding: 20px;">
+            <div style="margin-bottom: 20px;">
+              <strong>Descripción:</strong>
+              <p style="margin-top: 10px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <%= ticket.descripcion %>
+              </p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+              <div>
+                <strong>Estación:</strong><br>
+                <%= ticket.estacion_nombre %>
+              </div>
+              <div>
+                <strong>Tipo:</strong><br>
+                <%= ticket.tipo %>
+              </div>
+              <div>
+                <strong>Área:</strong><br>
+                <%= ticket.area || 'No especificada' %>
+              </div>
+              <div>
+                <strong>Reportado por:</strong><br>
+                <%= ticket.reportado_nombre %>
+              </div>
+              <div>
+                <strong>Fecha Reporte:</strong><br>
+                <%= new Date(ticket.fecha_reporte).toLocaleDateString('es-HN') %>
+                <%= new Date(ticket.fecha_reporte).toLocaleTimeString('es-HN', {hour: '2-digit', minute: '2-digit'}) %>
+              </div>
+              <% if (ticket.fecha_resuelto) { %>
+              <div>
+                <strong>Fecha Resuelto:</strong><br>
+                <%= new Date(ticket.fecha_resuelto).toLocaleDateString('es-HN') %>
+                <%= new Date(ticket.fecha_resuelto).toLocaleTimeString('es-HN', {hour: '2-digit', minute: '2-digit'}) %>
+              </div>
+              <% } %>
+            </div>
+            
+            <% if (ticket.costo_estimado) { %>
+            <div style="margin-bottom: 20px;">
+              <strong>Costo Estimado:</strong> L <%= parseFloat(ticket.costo_estimado).toFixed(5) %>
+              <% if (ticket.costo_real) { %>
+              <br><strong>Costo Real:</strong> L <%= parseFloat(ticket.costo_real).toFixed(5) %>
+              <% } %>
+            </div>
+            <% } %>
+            
+            <% if (ticket.solucion) { %>
+            <div style="margin-bottom: 20px;">
+              <strong>Solución:</strong>
+              <p style="margin-top: 10px; padding: 15px; background: #d1e7dd; border-radius: 6px; border-left: 4px solid #0f5132;">
+                <%= ticket.solucion %>
+              </p>
+            </div>
+            <% } %>
+            
+            <% if (ticket.foto_evidencia) { %>
+            <div>
+              <strong>Foto de Evidencia:</strong><br>
+              <img src="<%= ticket.foto_evidencia %>" style="max-width: 100%; margin-top: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+            </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Panel de acciones -->
+      <div>
+        <!-- Estado -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">Estado del Ticket</div>
+          <div style="padding: 20px;">
+            <% 
+              let estadoColor = '';
+              let estadoTexto = '';
+              if (ticket.estado === 'resuelto') { estadoColor = '#0f5132'; estadoTexto = 'Resuelto'; }
+              else if (ticket.estado === 'en_proceso') { estadoColor = '#084298'; estadoTexto = 'En Proceso'; }
+              else { estadoColor = '#856404'; estadoTexto = 'Pendiente'; }
+            %>
+            <div style="text-align: center; padding: 20px; background: <%= estadoColor %>22; border-radius: 8px; margin-bottom: 15px;">
+              <div style="font-size: 18px; font-weight: bold; color: <%= estadoColor %>;">
+                <%= estadoTexto %>
+              </div>
+            </div>
+            
+            <% if (ticket.estado !== 'resuelto') { %>
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="cambiarEstado('en_proceso')">
+              <i class="fas fa-play"></i> Marcar En Proceso
+            </button>
+            <button class="btn btn-success" style="width: 100%;" onclick="mostrarResolverModal()">
+              <i class="fas fa-check"></i> Marcar Resuelto
+            </button>
+            <% } %>
+          </div>
+        </div>
+        
+        <!-- Asignación -->
+        <div class="card">
+          <div class="card-header">Asignado a</div>
+          <div style="padding: 20px;">
+            <div style="margin-bottom: 15px;">
+              <strong><%= ticket.asignado_nombre || 'Sin asignar' %></strong>
+            </div>
+            
+            <select id="selectAsignado" class="form-control" style="margin-bottom: 10px;">
+              <option value="">Sin asignar</option>
+              <% usuarios.forEach(usr => { %>
+              <option value="<%= usr.id %>" <%= ticket.asignado_a == usr.id ? 'selected' : '' %>><%= usr.nombre %></option>
+              <% }); %>
+            </select>
+            
+            <button class="btn btn-secondary" style="width: 100%;" onclick="reasignarTicket()">
+              <i class="fas fa-user-check"></i> Reasignar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Modal: Resolver Ticket -->
+  <div id="modal-resolver" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Resolver Ticket #<%= ticket.id %></h2>
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <div style="padding: 20px;">
+        <div class="form-group">
+          <label>Solución Aplicada *</label>
+          <textarea id="solucion" class="form-control" rows="4" required placeholder="Describe cómo se resolvió el problema..."></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Costo Real (L)</label>
+          <input type="number" id="costo_real" class="form-control" step="0.00001" min="0" placeholder="0.00000">
+        </div>
+        
+        <div style="text-align: right; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button class="btn btn-success" onclick="resolverTicket()">
+            <i class="fas fa-check"></i> Marcar Resuelto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  
+  <script>
+    function mostrarResolverModal() {
+      document.getElementById('modal-resolver').style.display = 'flex';
+    }
+    
+    function cerrarModal() {
+      document.getElementById('modal-resolver').style.display = 'none';
+    }
+    
+    async function cambiarEstado(estado) {
+      try {
+        const response = await fetch('/tickets/<%= ticket.id %>/estado', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ Estado actualizado');
+          location.reload();
+        } else {
+          alert('❌ Error: ' + result.mensaje);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al actualizar estado');
+      }
+    }
+    
+    async function resolverTicket() {
+      const solucion = document.getElementById('solucion').value.trim();
+      const costo_real = document.getElementById('costo_real').value;
+      
+      if (!solucion) {
+        alert('Por favor describe la solución aplicada');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/tickets/<%= ticket.id %>/estado', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            estado: 'resuelto',
+            solucion,
+            costo_real: costo_real || null
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ Ticket resuelto exitosamente');
+          location.reload();
+        } else {
+          alert('❌ Error: ' + result.mensaje);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al resolver ticket');
+      }
+    }
+    
+    async function reasignarTicket() {
+      const asignado_a = document.getElementById('selectAsignado').value;
+      
+      try {
+        const response = await fetch('/tickets/<%= ticket.id %>/reasignar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ asignado_a: asignado_a || null })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ Ticket reasignado');
+          location.reload();
+        } else {
+          alert('❌ Error: ' + result.mensaje);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al reasignar');
+      }
+    }
+    
+    async function eliminarTicket(id) {
+      if (!confirm('¿Estás seguro de eliminar este ticket?\n\nEsta acción no se puede deshacer.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/tickets/${id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ Ticket eliminado');
+          window.location.href = '/tickets';
+        } else {
+          alert('❌ Error: ' + result.mensaje);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al eliminar');
+      }
+    }
+  </script>
+</body>
+</html>

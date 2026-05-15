@@ -628,3 +628,616 @@ table tr:hover {
 .mt-20 { margin-top: 20px; }
 .mb-20 { margin-bottom: 20px; }
 .hidden { display: none; }
+
+/* ==========================================
+   MODALES
+   ========================================== */
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s;
+}
+
+.modal-header {
+  background: var(--texaco-red);
+  color: white;
+  padding: 20px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.modal-content form {
+  padding: 30px;
+}
+
+.modal-footer {
+  margin-top: 30px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ==========================================
+   MENÚ HAMBURGUESA (MOBILE)
+   ========================================== */
+
+.menu-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 1001;
+}
+
+.menu-toggle span {
+  display: block;
+  width: 25px;
+  height: 3px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.menu-toggle.active span:nth-child(1) {
+  transform: rotate(45deg) translate(7px, 7px);
+}
+
+.menu-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}
+
+.menu-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.menu-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+/* ==========================================
+   RESPONSIVE - MEDIA QUERIES
+   ========================================== */
+
+/* TABLETS Y MÓVILES GRANDES (768px y menos) */
+@media (max-width: 768px) {
+  /* Mostrar botón hamburguesa */
+  .menu-toggle {
+    display: flex;
+  }
+  
+  /* Navegación */
+  .navbar-container {
+    flex-wrap: wrap;
+    padding: 10px 15px;
+    position: relative;
+  }
+  
+  .navbar-brand {
+    flex: 1;
+  }
+  
+  .navbar-menu {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
+    height: 100vh;
+    background: #ED1C24;
+    flex-direction: column;
+    padding: 80px 0 20px 0;
+    gap: 0;
+    transition: left 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+  }
+  
+  .navbar-menu.active {
+    left: 0;
+  }
+  
+  .navbar-menu li {
+    width: 100%;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .navbar-menu a {
+    padding: 15px 20px;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .navbar-menu a:hover {
+    background: rgba(0,0,0,0.1);
+  }
+  
+  .navbar-user {
+    width: 100%;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    order: 3;
+  }
+  
+  /* Contenido principal */
+  .main-content {
+    padding: 15px;
+  }
+  
+  /* Page header */
+  .page-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .page-header .page-title {
+    font-size: 22px;
+  }
+  
+  .page-header > div {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .page-header .btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  /* Grids */
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 15px;
+  }
+  
+  /* Formularios en grid */
+  .form-group,
+  [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Tablas */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    min-width: 600px;
+    font-size: 14px;
+  }
+  
+  table th,
+  table td {
+    padding: 8px;
+  }
+  
+  /* Botones */
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  
+  .btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  /* Cards */
+  .card {
+    margin-bottom: 15px;
+  }
+  
+  .card-header {
+    padding: 15px;
+    font-size: 16px;
+  }
+  
+  /* Selector de área (PISTA/TIENDA) */
+  .btn-selector {
+    min-height: 140px;
+    padding: 20px;
+  }
+  
+  .btn-selector i {
+    font-size: 24px !important;
+  }
+  
+  .btn-selector > div:first-of-type {
+    font-size: 18px !important;
+  }
+  
+  /* Item row en auditorías */
+  .item-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    padding: 15px 10px;
+  }
+  
+  .item-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  
+  .cumple-buttons {
+    width: 100%;
+  }
+  
+  .btn-cumple {
+    flex: 1;
+    padding: 10px 12px;
+  }
+  
+  /* Fotos preview */
+  .fotos-container {
+    gap: 8px;
+  }
+  
+  .foto-preview {
+    width: 70px;
+    height: 70px;
+  }
+  
+  /* Modales */
+  .modal-content {
+    width: 95%;
+    max-width: 95%;
+    margin: 20px auto;
+  }
+  
+  .modal-content form {
+    padding: 20px;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+  
+  /* Firma canvas */
+  .firma-canvas {
+    height: 150px !important;
+  }
+  
+  /* WhatsApp gestión */
+  .table th,
+  .table td {
+    white-space: nowrap;
+  }
+  
+  /* Dashboard stats */
+  .stat-card {
+    padding: 20px;
+  }
+  
+  .stat-value {
+    font-size: 32px;
+  }
+}
+
+/* MÓVILES PEQUEÑOS (480px y menos) */
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+  
+  /* Navegación */
+  .navbar-brand {
+    font-size: 18px;
+  }
+  
+  .brand-text {
+    font-size: 18px;
+  }
+  
+  .logo-texaco {
+    font-size: 24px;
+  }
+  
+  .navbar-menu a {
+    font-size: 14px;
+    padding: 10px;
+  }
+  
+  .navbar-menu a i {
+    font-size: 16px;
+  }
+  
+  /* Page header */
+  .page-header .page-title {
+    font-size: 20px;
+  }
+  
+  /* Botones */
+  .btn {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  .btn i {
+    font-size: 14px;
+  }
+  
+  /* Cards */
+  .card-header {
+    font-size: 15px;
+    padding: 12px;
+  }
+  
+  /* Selector de área */
+  .btn-selector {
+    min-height: 120px;
+    padding: 15px;
+  }
+  
+  .btn-selector i {
+    font-size: 20px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .btn-selector > div:first-of-type {
+    font-size: 16px !important;
+  }
+  
+  .btn-selector > div:last-of-type {
+    font-size: 12px !important;
+  }
+  
+  /* Grupos categoría */
+  .grupo-header {
+    font-size: 18px;
+    padding: 15px;
+  }
+  
+  .subcategoria-titulo {
+    font-size: 16px;
+  }
+  
+  /* Item row */
+  .item-name {
+    font-size: 14px;
+  }
+  
+  .btn-cumple {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  
+  .btn-cumple i {
+    display: none;
+  }
+  
+  /* Fotos */
+  .foto-preview {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .foto-preview i {
+    font-size: 18px !important;
+  }
+  
+  /* Modales */
+  .modal-header h2 {
+    font-size: 18px;
+  }
+  
+  .modal-close {
+    font-size: 24px;
+  }
+  
+  /* Form groups */
+  .form-group label {
+    font-size: 14px;
+  }
+  
+  .form-control {
+    font-size: 14px;
+    padding: 10px;
+  }
+  
+  /* Stats cards */
+  .stat-value {
+    font-size: 28px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  /* Login page */
+  .login-header h1 {
+    font-size: 24px;
+  }
+  
+  .texaco-star {
+    font-size: 60px;
+  }
+  
+  .login-form {
+    padding: 20px;
+  }
+  
+  /* Tabla en dashboard */
+  table {
+    font-size: 12px;
+  }
+  
+  /* Footer */
+  .footer {
+    padding: 15px;
+    font-size: 12px;
+  }
+}
+
+/* LANDSCAPE MÓVILES */
+@media (max-width: 768px) and (orientation: landscape) {
+  .main-content {
+    padding: 10px;
+  }
+  
+  .page-header {
+    padding: 10px 0;
+  }
+  
+  .grupo-header {
+    padding: 12px 15px;
+  }
+  
+  .item-row {
+    padding: 10px;
+  }
+  
+  .firma-canvas {
+    height: 120px !important;
+  }
+}
+
+/* TABLETS (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navbar-menu {
+    gap: 10px;
+  }
+  
+  .navbar-menu a {
+    padding: 10px 15px;
+    font-size: 14px;
+  }
+  
+  .main-content {
+    padding: 20px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  table {
+    font-size: 14px;
+  }
+  
+  .btn-selector {
+    min-height: 160px;
+  }
+}
+
+/* IMPRESIÓN */
+@media print {
+  .navbar,
+  .page-header .btn,
+  .footer,
+  .btn-logout {
+    display: none !important;
+  }
+  
+  .main-content {
+    padding: 0;
+  }
+  
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+  
+  .grupo-categoria {
+    page-break-inside: avoid;
+  }
+}
+
+/* FIX PARA SAFARI iOS */
+@supports (-webkit-touch-callout: none) {
+  .btn-selector {
+    -webkit-tap-highlight-color: rgba(237, 28, 36, 0.2);
+  }
+  
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

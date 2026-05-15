@@ -28,8 +28,7 @@
     "express-validator": "^7.0.1",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.43",
-    "exceljs": "^4.3.0",
-    "pdfkit": "^0.13.0"
+    "exceljs": "^4.3.0"
   },
   "optionalDependencies": {
     "resend": "^3.0.0"

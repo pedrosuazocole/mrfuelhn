@@ -62,6 +62,8 @@ BRAND_NAME=Texaco
 
 Railway desplegará automáticamente cuando detecte el push a GitHub.
 
+**⚠️ NOTA IMPORTANTE:** Este ZIP incluye `railway.json` actualizado. Si ya tenías uno viejo, será reemplazado automáticamente.
+
 ---
 
 ## ✅ Verificar que Funcionó

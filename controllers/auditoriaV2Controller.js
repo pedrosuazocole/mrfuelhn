@@ -49,7 +49,7 @@ exports.mostrarFormularioNueva = async (req, res) => {
       'SELECT * FROM estaciones WHERE activo = 1 ORDER BY nombre ASC'
     );
     
-    // Obtener categorías con sus ítems
+    // Obtener todas las categorías con sus ítems
     const categorias = await allAsync(
       'SELECT * FROM categorias WHERE activo = 1 ORDER BY orden ASC'
     );
@@ -62,11 +62,42 @@ exports.mostrarFormularioNueva = async (req, res) => {
       );
     }
     
+    // Crear grupos independientes: PISTA y TIENDA (con sus subcategorías)
+    const grupos = [];
+    
+    // GRUPO 1: PISTA (solo PISTA)
+    const pista = categorias.find(c => c.nombre === 'PISTA');
+    if (pista) {
+      grupos.push({
+        id: 'pista',
+        nombre: 'PISTA',
+        categorias: [pista]
+      });
+    }
+    
+    // GRUPO 2: TIENDA (incluye TIENDA, BODEGA, COCINA)
+    const tienda = categorias.find(c => c.nombre === 'TIENDA');
+    const bodega = categorias.find(c => c.nombre === 'BODEGA');
+    const cocina = categorias.find(c => c.nombre === 'COCINA');
+    
+    const categoriaTienda = [];
+    if (tienda) categoriaTienda.push(tienda);
+    if (bodega) categoriaTienda.push(bodega);
+    if (cocina) categoriaTienda.push(cocina);
+    
+    if (categoriaTienda.length > 0) {
+      grupos.push({
+        id: 'tienda',
+        nombre: 'TIENDA',
+        categorias: categoriaTienda
+      });
+    }
+    
     res.render('auditorias-v2/nueva', {
       user: req.session,
       titulo: 'Nueva Auditoría',
       estaciones,
-      categorias
+      grupos
     });
   } catch (error) {
     console.error('Error:', error);
@@ -85,6 +116,7 @@ exports.crearAuditoria = async (req, res) => {
       estacion_id,
       fecha_visita,
       hora_visita,
+      area_evaluada, // NUEVO: área seleccionada (pista o tienda)
       observaciones_generales,
       recomendaciones,
       supervisor_nombre,
@@ -92,13 +124,13 @@ exports.crearAuditoria = async (req, res) => {
       evaluaciones // JSON con las evaluaciones de cada ítem
     } = req.body;
     
-    console.log('📊 Datos recibidos:', { estacion_id, fecha_visita, hora_visita });
+    console.log('📊 Datos recibidos:', { estacion_id, fecha_visita, hora_visita, area_evaluada });
     
     // Validaciones
-    if (!estacion_id || !fecha_visita || !hora_visita) {
+    if (!estacion_id || !fecha_visita || !hora_visita || !area_evaluada) {
       return res.status(400).json({
         success: false,
-        mensaje: 'Estación, fecha y hora son obligatorios'
+        mensaje: 'Estación, fecha, hora y área son obligatorios'
       });
     }
     
@@ -106,13 +138,43 @@ exports.crearAuditoria = async (req, res) => {
     const evaluacionesData = JSON.parse(evaluaciones || '{}');
     console.log('✅ Evaluaciones parseadas:', Object.keys(evaluacionesData).length, 'items');
     
-    // Calcular estadísticas
-    let totalItems = Object.keys(evaluacionesData).length;
+    // OBTENER ÍTEMS DEL ÁREA SELECCIONADA ÚNICAMENTE
+    let itemsDelArea = [];
+    
+    if (area_evaluada === 'pista') {
+      // Solo ítems de PISTA
+      const categoriaPista = await getAsync("SELECT id FROM categorias WHERE nombre = 'PISTA'");
+      if (categoriaPista) {
+        itemsDelArea = await allAsync(
+          'SELECT id FROM items_auditoria WHERE categoria_id = ? AND activo = 1',
+          [categoriaPista.id]
+        );
+      }
+    } else if (area_evaluada === 'tienda') {
+      // Ítems de TIENDA + BODEGA + COCINA
+      const categoriasTienda = await allAsync(
+        "SELECT id FROM categorias WHERE nombre IN ('TIENDA', 'BODEGA', 'COCINA')"
+      );
+      const categoriaIds = categoriasTienda.map(c => c.id);
+      itemsDelArea = await allAsync(
+        `SELECT id FROM items_auditoria WHERE categoria_id IN (${categoriaIds.join(',')}) AND activo = 1`
+      );
+    }
+    
+    console.log(`📋 Total ítems en área ${area_evaluada}:`, itemsDelArea.length);
+    
+    // Calcular estadísticas SOLO con ítems del área seleccionada
+    const idsDelArea = itemsDelArea.map(item => item.id.toString());
+    let totalItems = 0;
     let itemsCumplidos = 0;
     
     for (const itemId in evaluacionesData) {
-      if (evaluacionesData[itemId].cumple === true || evaluacionesData[itemId].cumple === 1) {
-        itemsCumplidos++;
+      // SOLO contar si el ítem pertenece al área seleccionada
+      if (idsDelArea.includes(itemId)) {
+        totalItems++;
+        if (evaluacionesData[itemId].cumple === true || evaluacionesData[itemId].cumple === 1) {
+          itemsCumplidos++;
+        }
       }
     }
     
@@ -120,7 +182,7 @@ exports.crearAuditoria = async (req, res) => {
       ? Math.round((itemsCumplidos / totalItems) * 100) 
       : 0;
     
-    console.log('📊 Calificación calculada:', calificacionGeneral, '%');
+    console.log(`📊 Calificación ${area_evaluada}:`, calificacionGeneral, '%', `(${itemsCumplidos}/${totalItems})`);
     
     // Insertar auditoría
     console.log('💾 Insertando auditoría en base de datos...');
@@ -418,6 +480,51 @@ exports.obtenerEstadisticas = async (req, res) => {
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Error al obtener estadísticas' });
+  }
+};
+
+/**
+ * Generar reporte PDF (HTML imprimible)
+ */
+exports.generarPDF = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { generarPDFAuditoria } = require('../utils/pdfGenerator');
+    
+    // Obtener datos
+    const { auditoria, evaluaciones } = await generarPDFAuditoria(id);
+    
+    // Renderizar HTML imprimible
+    res.render('auditorias-v2/pdf', {
+      auditoria,
+      evaluaciones
+    });
+    
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).send('Error al generar PDF');
+  }
+};
+
+/**
+ * Obtener números de WhatsApp activos para envío
+ */
+exports.obtenerNumerosWhatsApp = async (req, res) => {
+  try {
+    const numeros = await allAsync(
+      'SELECT id, nombre, numero, cargo FROM whatsapp_numeros WHERE activo = 1 ORDER BY nombre ASC'
+    );
+    
+    res.json({
+      success: true,
+      numeros
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({
+      success: false,
+      mensaje: 'Error al obtener números de WhatsApp'
+    });
   }
 };
 

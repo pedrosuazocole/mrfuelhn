@@ -10,6 +10,130 @@ async function migrarAV2() {
   console.log('🚀 Iniciando migración a Mr. Fuel v2.0...\n');
 
   try {
+    // ===================================
+    // CREAR TABLAS BASE (si no existen)
+    // ===================================
+    console.log('📊 Verificando tablas base del sistema...\n');
+
+    // 0. Tabla de usuarios
+    console.log('👥 Creando tabla de usuarios...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor')),
+        telefono TEXT,
+        activo INTEGER DEFAULT 1,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ultimo_acceso DATETIME
+      )
+    `);
+    console.log('✅ Tabla usuarios verificada');
+
+    // 0.1 Tabla de estaciones
+    console.log('⛽ Creando tabla de estaciones...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS estaciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        codigo TEXT UNIQUE NOT NULL,
+        direccion TEXT NOT NULL,
+        ciudad TEXT NOT NULL,
+        departamento TEXT NOT NULL,
+        telefono TEXT,
+        encargado TEXT,
+        activo INTEGER DEFAULT 1,
+        latitud REAL,
+        longitud REAL,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Tabla estaciones verificada');
+
+    // 0.2 Tabla de auditorías v1 (legacy - necesaria para compatibilidad)
+    console.log('📋 Creando tabla de auditorías v1 (legacy)...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS auditorias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        estacion_id INTEGER NOT NULL,
+        auditor_id INTEGER NOT NULL,
+        fecha_visita DATETIME NOT NULL,
+        hora_visita TEXT NOT NULL,
+        limpieza_bombas INTEGER DEFAULT 0,
+        limpieza_bombas_nota TEXT,
+        aceites_organizados INTEGER DEFAULT 0,
+        aceites_organizados_nota TEXT,
+        uniforme_completo INTEGER DEFAULT 0,
+        uniforme_tiene_gorra INTEGER DEFAULT 0,
+        uniforme_nota TEXT,
+        saludo_protocolo INTEGER DEFAULT 0,
+        saludo_nota TEXT,
+        trato_compra INTEGER DEFAULT 0,
+        trato_compra_nota TEXT,
+        despedida_protocolo INTEGER DEFAULT 0,
+        despedida_nota TEXT,
+        calificacion_general REAL DEFAULT 0,
+        observaciones_generales TEXT,
+        recomendaciones TEXT,
+        estado TEXT DEFAULT 'completada' CHECK(estado IN ('borrador', 'completada', 'revisada')),
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (estacion_id) REFERENCES estaciones(id),
+        FOREIGN KEY (auditor_id) REFERENCES usuarios(id)
+      )
+    `);
+    console.log('✅ Tabla auditorias v1 verificada');
+
+    // 0.3 Tabla de fotos de auditoría v1
+    console.log('📸 Creando tabla de fotos v1...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS auditoria_fotos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        auditoria_id INTEGER NOT NULL,
+        categoria TEXT NOT NULL,
+        ruta_archivo TEXT NOT NULL,
+        descripcion TEXT,
+        fecha_subida DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (auditoria_id) REFERENCES auditorias(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✅ Tabla auditoria_fotos verificada');
+
+    // 0.4 Tabla de recordatorios
+    console.log('⏰ Creando tabla de recordatorios...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS recordatorios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supervisor_id INTEGER NOT NULL,
+        estacion_id INTEGER,
+        fecha_programada DATE NOT NULL,
+        hora_programada TIME NOT NULL,
+        mensaje TEXT NOT NULL,
+        enviado INTEGER DEFAULT 0,
+        fecha_envio DATETIME,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (supervisor_id) REFERENCES usuarios(id),
+        FOREIGN KEY (estacion_id) REFERENCES estaciones(id)
+      )
+    `);
+    console.log('✅ Tabla recordatorios verificada');
+
+    // 0.5 Índices para optimización
+    console.log('🔍 Creando índices...');
+    await runAsync('CREATE INDEX IF NOT EXISTS idx_auditorias_fecha ON auditorias(fecha_visita)');
+    await runAsync('CREATE INDEX IF NOT EXISTS idx_auditorias_estacion ON auditorias(estacion_id)');
+    await runAsync('CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)');
+    await runAsync('CREATE INDEX IF NOT EXISTS idx_recordatorios_fecha ON recordatorios(fecha_programada)');
+    console.log('✅ Índices creados');
+
+    console.log('\n✅ Todas las tablas base verificadas\n');
+
+    // ===================================
+    // CREAR TABLAS V2.0 (nuevas)
+    // ===================================
+    console.log('🆕 Creando tablas v2.0...\n');
+
     // 1. Crear tabla de categorías (PISTA, TIENDA, BODEGA, COCINA)
     console.log('📁 Creando tabla de categorías...');
     await runAsync(`
@@ -113,7 +237,73 @@ async function migrarAV2() {
       VALUES ('pie_pagina', 'Asesores Lab - WhatsApp: +504 9697 8435', 'Pie de página para reportes')
     `);
 
-    // 7. Insertar categorías iniciales
+    // 6.1 Crear tabla de números de WhatsApp para notificaciones
+    console.log('\n📱 Creando tabla de números WhatsApp...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS whatsapp_numeros (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        numero TEXT NOT NULL,
+        cargo TEXT,
+        activo INTEGER DEFAULT 1,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Tabla whatsapp_numeros creada');
+
+    // Insertar números por defecto
+    await runAsync(`
+      INSERT OR IGNORE INTO whatsapp_numeros (nombre, numero, cargo, activo)
+      VALUES ('Supervisor Principal', '+50496978435', 'Supervisor', 1)
+    `);
+    console.log('✅ Número WhatsApp por defecto agregado');
+
+    // 6.2 Crear tabla de tickets de mantenimiento/fallas
+    console.log('\n🎫 Creando tabla de tickets...');
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        estacion_id INTEGER NOT NULL,
+        reportado_por INTEGER NOT NULL,
+        tipo TEXT NOT NULL,
+        prioridad TEXT NOT NULL,
+        titulo TEXT NOT NULL,
+        descripcion TEXT NOT NULL,
+        area TEXT,
+        estado TEXT DEFAULT 'pendiente',
+        asignado_a INTEGER,
+        fecha_reporte DATETIME DEFAULT CURRENT_TIMESTAMP,
+        fecha_resuelto DATETIME,
+        solucion TEXT,
+        costo_estimado REAL,
+        costo_real REAL,
+        foto_evidencia TEXT,
+        FOREIGN KEY (estacion_id) REFERENCES estaciones(id),
+        FOREIGN KEY (reportado_por) REFERENCES usuarios(id),
+        FOREIGN KEY (asignado_a) REFERENCES usuarios(id)
+      )
+    `);
+    console.log('✅ Tabla tickets creada');
+
+    // 7. Crear usuario admin por defecto si no existe
+    console.log('\n👤 Verificando usuario administrador...');
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash('admin123', 10);
+    
+    try {
+      await runAsync(
+        `INSERT OR IGNORE INTO usuarios (nombre, email, password, rol, telefono) 
+         VALUES (?, ?, ?, ?, ?)`,
+        ['Administrador Principal', 'admin@texaco.com', passwordHash, 'admin', '+504 9697 8435']
+      );
+      console.log('✅ Usuario admin verificado (email: admin@texaco.com, password: admin123)');
+    } catch (err) {
+      if (!err.message.includes('UNIQUE')) {
+        console.log('⚠️  Usuario admin ya existe');
+      }
+    }
+
+    // 8. Insertar categorías iniciales
     console.log('\n📋 Insertando categorías iniciales...');
     
     const categorias = [
@@ -131,7 +321,7 @@ async function migrarAV2() {
       console.log(`  ✓ ${cat.nombre}`);
     }
 
-    // 8. Insertar ítems de PISTA
+    // 9. Insertar ítems de PISTA
     console.log('\n🛣️  Insertando ítems de PISTA...');
     const pistaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['PISTA'])).id;
     
@@ -155,7 +345,7 @@ async function migrarAV2() {
       console.log(`  ✓ ${itemsPista[i]}`);
     }
 
-    // 9. Insertar ítems de TIENDA
+    // 10. Insertar ítems de TIENDA
     console.log('\n🏪 Insertando ítems de TIENDA...');
     const tiendaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['TIENDA'])).id;
     
@@ -195,7 +385,7 @@ async function migrarAV2() {
       console.log(`  ✓ ${itemsTienda[i]}`);
     }
 
-    // 10. Insertar ítems de BODEGA
+    // 11. Insertar ítems de BODEGA
     console.log('\n📦 Insertando ítems de BODEGA...');
     const bodegaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['BODEGA'])).id;
     
@@ -213,7 +403,7 @@ async function migrarAV2() {
       console.log(`  ✓ ${itemsBodega[i]}`);
     }
 
-    // 11. Insertar ítems de COCINA
+    // 12. Insertar ítems de COCINA
     console.log('\n👨‍🍳 Insertando ítems de COCINA...');
     const cocinaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['COCINA'])).id;
     

@@ -7,16 +7,17 @@ router.use(isAuthenticated);
 
 router.get('/', async (req, res) => {
   try {
-    const totalAuditorias = await getAsync('SELECT COUNT(*) as total FROM auditorias');
+    // Usar auditorías v2 en lugar de v1
+    const totalAuditorias = await getAsync('SELECT COUNT(*) as total FROM auditorias_v2');
     const totalEstaciones = await getAsync('SELECT COUNT(*) as total FROM estaciones WHERE activo = 1');
-    const promedioGeneral = await getAsync('SELECT AVG(calificacion_general) as promedio FROM auditorias');
+    const promedioGeneral = await getAsync('SELECT AVG(calificacion_general) as promedio FROM auditorias_v2');
     
     const ultimasAuditorias = await allAsync(`
       SELECT a.*, e.nombre as estacion_nombre, u.nombre as auditor_nombre
-      FROM auditorias a
+      FROM auditorias_v2 a
       INNER JOIN estaciones e ON a.estacion_id = e.id
       INNER JOIN usuarios u ON a.auditor_id = u.id
-      ORDER BY a.fecha_creacion DESC
+      ORDER BY a.fecha_visita DESC, a.hora_visita DESC
       LIMIT 5
     `);
     
@@ -26,7 +27,7 @@ router.get('/', async (req, res) => {
         COUNT(a.id) as total_auditorias,
         AVG(a.calificacion_general) as promedio
       FROM estaciones e
-      LEFT JOIN auditorias a ON e.id = a.estacion_id
+      LEFT JOIN auditorias_v2 a ON e.id = a.estacion_id
       WHERE e.activo = 1
       GROUP BY e.id
       ORDER BY promedio DESC
