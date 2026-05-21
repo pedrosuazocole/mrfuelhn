@@ -23,7 +23,7 @@ async function migrarAV2() {
         nombre TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor')),
+        rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor', 'tecnico')),
         telefono TEXT,
         activo INTEGER DEFAULT 1,
         fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -303,7 +303,68 @@ async function migrarAV2() {
       }
     }
 
-    // 8. Insertar categorías iniciales
+    // 8. Limpiar ítems duplicados preservando auditorías existentes
+    console.log('\n🧹 Limpiando ítems duplicados y reparando auditorías...');
+
+    // Paso 1: Reasignar evaluaciones que apuntan a ítems duplicados
+    // hacia el ítem canónico (MIN id) de su misma categoría y nombre
+    await runAsync(`
+      UPDATE evaluaciones_items
+      SET item_id = (
+        SELECT MIN(i2.id)
+        FROM items_auditoria i2
+        INNER JOIN items_auditoria i1 ON i1.id = evaluaciones_items.item_id
+        WHERE i2.categoria_id = i1.categoria_id
+          AND i2.nombre = i1.nombre
+      )
+      WHERE item_id NOT IN (
+        SELECT MIN(id)
+        FROM items_auditoria
+        GROUP BY categoria_id, nombre
+      )
+    `);
+    console.log('  ✓ Evaluaciones reasignadas al ítem canónico');
+
+    // Paso 2: Eliminar evaluaciones duplicadas dentro de la misma auditoría
+    // (puede haber quedado más de una evaluación del mismo ítem en la misma auditoría)
+    await runAsync(`
+      DELETE FROM evaluaciones_items
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM evaluaciones_items
+        GROUP BY auditoria_id, item_id
+      )
+    `);
+    console.log('  ✓ Evaluaciones duplicadas por auditoría eliminadas');
+
+    // Paso 3: Ahora sí eliminar los ítems duplicados (las evaluaciones ya apuntan al correcto)
+    await runAsync(`
+      DELETE FROM items_auditoria
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM items_auditoria
+        GROUP BY categoria_id, nombre
+      )
+    `);
+    console.log('  ✓ Ítems duplicados eliminados');
+
+    // Paso 4: Reordenar los ítems por categoría según su orden original
+    const todasCategorias = await allAsync('SELECT id FROM categorias');
+    for (const cat of todasCategorias) {
+      const items = await allAsync(
+        'SELECT id FROM items_auditoria WHERE categoria_id = ? ORDER BY orden, id',
+        [cat.id]
+      );
+      for (let i = 0; i < items.length; i++) {
+        await runAsync(
+          'UPDATE items_auditoria SET orden = ? WHERE id = ?',
+          [i + 1, items[i].id]
+        );
+      }
+    }
+    console.log('  ✓ Orden de ítems corregido');
+
+    // 8b. Insertar categorías iniciales
     console.log('\n📋 Insertando categorías iniciales...');
     
     const categorias = [
@@ -321,7 +382,7 @@ async function migrarAV2() {
       console.log(`  ✓ ${cat.nombre}`);
     }
 
-    // 9. Insertar ítems de PISTA
+    // 9. Insertar ítems de PISTA (solo si no existen)
     console.log('\n🛣️  Insertando ítems de PISTA...');
     const pistaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['PISTA'])).id;
     
@@ -337,15 +398,20 @@ async function migrarAV2() {
       'Basureros limpios'
     ];
 
-    for (let i = 0; i < itemsPista.length; i++) {
-      await runAsync(
-        'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
-        [pistaCatId, itemsPista[i], i + 1]
-      );
-      console.log(`  ✓ ${itemsPista[i]}`);
+    const pistaExistentes = await getAsync('SELECT COUNT(*) as total FROM items_auditoria WHERE categoria_id = ?', [pistaCatId]);
+    if (pistaExistentes.total === 0) {
+      for (let i = 0; i < itemsPista.length; i++) {
+        await runAsync(
+          'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
+          [pistaCatId, itemsPista[i], i + 1]
+        );
+        console.log(`  ✓ ${itemsPista[i]}`);
+      }
+    } else {
+      console.log(`  ℹ️  PISTA ya tiene ${pistaExistentes.total} ítems, omitiendo inserción`);
     }
 
-    // 10. Insertar ítems de TIENDA
+    // 10. Insertar ítems de TIENDA (solo si no existen)
     console.log('\n🏪 Insertando ítems de TIENDA...');
     const tiendaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['TIENDA'])).id;
     
@@ -377,15 +443,20 @@ async function migrarAV2() {
       'Lista de pedidos'
     ];
 
-    for (let i = 0; i < itemsTienda.length; i++) {
-      await runAsync(
-        'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
-        [tiendaCatId, itemsTienda[i], i + 1]
-      );
-      console.log(`  ✓ ${itemsTienda[i]}`);
+    const tiendaExistentes = await getAsync('SELECT COUNT(*) as total FROM items_auditoria WHERE categoria_id = ?', [tiendaCatId]);
+    if (tiendaExistentes.total === 0) {
+      for (let i = 0; i < itemsTienda.length; i++) {
+        await runAsync(
+          'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
+          [tiendaCatId, itemsTienda[i], i + 1]
+        );
+        console.log(`  ✓ ${itemsTienda[i]}`);
+      }
+    } else {
+      console.log(`  ℹ️  TIENDA ya tiene ${tiendaExistentes.total} ítems, omitiendo inserción`);
     }
 
-    // 11. Insertar ítems de BODEGA
+    // 11. Insertar ítems de BODEGA (solo si no existen)
     console.log('\n📦 Insertando ítems de BODEGA...');
     const bodegaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['BODEGA'])).id;
     
@@ -395,15 +466,20 @@ async function migrarAV2() {
       'Cuarto eléctrico despejado'
     ];
 
-    for (let i = 0; i < itemsBodega.length; i++) {
-      await runAsync(
-        'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
-        [bodegaCatId, itemsBodega[i], i + 1]
-      );
-      console.log(`  ✓ ${itemsBodega[i]}`);
+    const bodegaExistentes = await getAsync('SELECT COUNT(*) as total FROM items_auditoria WHERE categoria_id = ?', [bodegaCatId]);
+    if (bodegaExistentes.total === 0) {
+      for (let i = 0; i < itemsBodega.length; i++) {
+        await runAsync(
+          'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
+          [bodegaCatId, itemsBodega[i], i + 1]
+        );
+        console.log(`  ✓ ${itemsBodega[i]}`);
+      }
+    } else {
+      console.log(`  ℹ️  BODEGA ya tiene ${bodegaExistentes.total} ítems, omitiendo inserción`);
     }
 
-    // 12. Insertar ítems de COCINA
+    // 12. Insertar ítems de COCINA (solo si no existen)
     console.log('\n👨‍🍳 Insertando ítems de COCINA...');
     const cocinaCatId = (await getAsync('SELECT id FROM categorias WHERE nombre = ?', ['COCINA'])).id;
     
@@ -417,12 +493,182 @@ async function migrarAV2() {
       'Limpio'
     ];
 
-    for (let i = 0; i < itemsCocina.length; i++) {
+    const cocinaExistentes = await getAsync('SELECT COUNT(*) as total FROM items_auditoria WHERE categoria_id = ?', [cocinaCatId]);
+    if (cocinaExistentes.total === 0) {
+      for (let i = 0; i < itemsCocina.length; i++) {
+        await runAsync(
+          'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
+          [cocinaCatId, itemsCocina[i], i + 1]
+        );
+        console.log(`  ✓ ${itemsCocina[i]}`);
+      }
+    } else {
+      console.log(`  ℹ️  COCINA ya tiene ${cocinaExistentes.total} ítems, omitiendo inserción`);
+    }
+
+    // ===================================
+    // TABLAS DE MANTENIMIENTO
+    // ===================================
+
+    // Tabla de categorías de mantenimiento
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS mantenimiento_categorias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL UNIQUE,
+        descripcion TEXT,
+        orden INTEGER NOT NULL DEFAULT 0,
+        activo INTEGER DEFAULT 1,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Tabla mantenimiento_categorias creada');
+
+    // Tabla de ítems de mantenimiento
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS mantenimiento_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        categoria_id INTEGER NOT NULL,
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        orden INTEGER NOT NULL DEFAULT 0,
+        activo INTEGER DEFAULT 1,
+        max_fotos INTEGER DEFAULT 3,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (categoria_id) REFERENCES mantenimiento_categorias(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✅ Tabla mantenimiento_items creada');
+
+    // Tabla de mantenimientos (checklist ejecutado)
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS mantenimientos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        estacion_id INTEGER NOT NULL,
+        tecnico_id INTEGER NOT NULL,
+        categoria_id INTEGER NOT NULL,
+        fecha_visita DATE NOT NULL,
+        hora_visita TIME NOT NULL,
+        calificacion_general REAL DEFAULT 0,
+        observaciones_generales TEXT,
+        recomendaciones TEXT,
+        estado TEXT DEFAULT 'completado',
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (estacion_id) REFERENCES estaciones(id),
+        FOREIGN KEY (tecnico_id) REFERENCES usuarios(id),
+        FOREIGN KEY (categoria_id) REFERENCES mantenimiento_categorias(id)
+      )
+    `);
+    console.log('✅ Tabla mantenimientos creada');
+
+    // Tabla de evaluaciones de mantenimiento
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS mantenimiento_evaluaciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mantenimiento_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        cumple INTEGER DEFAULT 0,
+        observacion TEXT,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (mantenimiento_id) REFERENCES mantenimientos(id) ON DELETE CASCADE,
+        FOREIGN KEY (item_id) REFERENCES mantenimiento_items(id)
+      )
+    `);
+    console.log('✅ Tabla mantenimiento_evaluaciones creada');
+
+    // Tabla de fotos de mantenimiento
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS mantenimiento_fotos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        evaluacion_id INTEGER NOT NULL,
+        ruta_archivo TEXT NOT NULL,
+        orden INTEGER DEFAULT 1,
+        fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (evaluacion_id) REFERENCES mantenimiento_evaluaciones(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✅ Tabla mantenimiento_fotos creada');
+
+    // Insertar categoría Aire Acondicionado (solo si no existe)
+    const acExistente = await getAsync(
+      "SELECT id FROM mantenimiento_categorias WHERE nombre = 'Aire Acondicionado'"
+    );
+    if (!acExistente) {
       await runAsync(
-        'INSERT INTO items_auditoria (categoria_id, nombre, orden) VALUES (?, ?, ?)',
-        [cocinaCatId, itemsCocina[i], i + 1]
+        'INSERT INTO mantenimiento_categorias (nombre, descripcion, orden) VALUES (?, ?, ?)',
+        ['Aire Acondicionado', 'Mantenimiento de equipos de aire acondicionado', 1]
       );
-      console.log(`  ✓ ${itemsCocina[i]}`);
+      const acId = (await getAsync("SELECT id FROM mantenimiento_categorias WHERE nombre = 'Aire Acondicionado'")).id;
+
+      const itemsAC = [
+        'Limpieza de filtros',
+        'Revisión de compresor',
+        'Carga de refrigerante',
+        'Limpieza de evaporador',
+        'Limpieza de condensador',
+        'Revisión de termostato',
+        'Revisión de drenaje',
+        'Revisión eléctrica',
+        'Prueba de funcionamiento',
+        'Revisión de correas y fajas'
+      ];
+
+      const acItemsExistentes = await getAsync(
+        'SELECT COUNT(*) as total FROM mantenimiento_items WHERE categoria_id = ?', [acId]
+      );
+      if (acItemsExistentes.total === 0) {
+        for (let i = 0; i < itemsAC.length; i++) {
+          await runAsync(
+            'INSERT INTO mantenimiento_items (categoria_id, nombre, orden) VALUES (?, ?, ?)',
+            [acId, itemsAC[i], i + 1]
+          );
+        }
+        console.log(`✅ ${itemsAC.length} ítems de Aire Acondicionado creados`);
+      }
+    } else {
+      console.log('  ℹ️  Categoría Aire Acondicionado ya existe, omitiendo');
+    }
+
+    // ===================================
+    // MIGRACIÓN: Agregar rol 'tecnico'
+    // SQLite no permite ALTER TABLE para cambiar CHECK constraints
+    // Se recrea la tabla preservando todos los datos existentes
+    // ===================================
+    console.log('\n🔧 Verificando rol tecnico en tabla usuarios...');
+    try {
+      // Intentar insertar un usuario temporal con rol tecnico para detectar si el constraint es viejo
+      await runAsync(`INSERT INTO usuarios (nombre, email, password, rol) VALUES ('__test__', '__test__@test.com', 'x', 'tecnico')`);
+      await runAsync(`DELETE FROM usuarios WHERE email = '__test__@test.com'`);
+      console.log('  ✅ Rol tecnico ya soportado, no se necesita migración');
+    } catch (e) {
+      if (e.message && e.message.includes('CHECK constraint failed')) {
+        console.log('  ⚠️  Constraint antiguo detectado, migrando tabla usuarios...');
+
+        // 1. Crear tabla temporal con el constraint correcto
+        await runAsync(`
+          CREATE TABLE IF NOT EXISTS usuarios_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor', 'tecnico')),
+            telefono TEXT,
+            activo INTEGER DEFAULT 1,
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ultimo_acceso DATETIME
+          )
+        `);
+
+        // 2. Copiar todos los datos existentes
+        await runAsync(`INSERT INTO usuarios_new SELECT * FROM usuarios`);
+
+        // 3. Eliminar tabla vieja y renombrar la nueva
+        await runAsync(`DROP TABLE usuarios`);
+        await runAsync(`ALTER TABLE usuarios_new RENAME TO usuarios`);
+
+        console.log('  ✅ Tabla usuarios migrada con rol tecnico');
+      } else {
+        console.log('  ⚠️  Error inesperado:', e.message);
+      }
     }
 
     console.log('\n✅ Migración completada exitosamente!');

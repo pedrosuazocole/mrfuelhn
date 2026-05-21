@@ -5,10 +5,11 @@
 const express = require('express');
 const router = express.Router();
 const ticketsController = require('../controllers/ticketsController');
-const { isAuthenticated, isAdmin } = require('../middleware/auth');
+const { isAuthenticated, isAdmin, hasRole } = require('../middleware/auth');
 
-// Todas las rutas requieren autenticación
+// Todas las rutas requieren autenticación y rol no-técnico
 router.use(isAuthenticated);
+router.use(hasRole('admin', 'supervisor', 'auditor'));
 
 // Listar tickets
 router.get('/', ticketsController.listarTickets);

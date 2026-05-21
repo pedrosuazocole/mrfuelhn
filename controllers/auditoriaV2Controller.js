@@ -75,15 +75,11 @@ exports.mostrarFormularioNueva = async (req, res) => {
       });
     }
     
-    // GRUPO 2: TIENDA (incluye TIENDA, BODEGA, COCINA)
+    // GRUPO 2: TIENDA (solo TIENDA)
     const tienda = categorias.find(c => c.nombre === 'TIENDA');
-    const bodega = categorias.find(c => c.nombre === 'BODEGA');
-    const cocina = categorias.find(c => c.nombre === 'COCINA');
     
     const categoriaTienda = [];
     if (tienda) categoriaTienda.push(tienda);
-    if (bodega) categoriaTienda.push(bodega);
-    if (cocina) categoriaTienda.push(cocina);
     
     if (categoriaTienda.length > 0) {
       grupos.push({
@@ -151,9 +147,9 @@ exports.crearAuditoria = async (req, res) => {
         );
       }
     } else if (area_evaluada === 'tienda') {
-      // Ítems de TIENDA + BODEGA + COCINA
+      // Ítems de TIENDA únicamente
       const categoriasTienda = await allAsync(
-        "SELECT id FROM categorias WHERE nombre IN ('TIENDA', 'BODEGA', 'COCINA')"
+        "SELECT id FROM categorias WHERE nombre = 'TIENDA'"
       );
       const categoriaIds = categoriasTienda.map(c => c.id);
       itemsDelArea = await allAsync(
@@ -345,13 +341,21 @@ exports.verDetalle = async (req, res) => {
       return res.status(404).send('Auditoría no encontrada');
     }
     
-    // Obtener categorías con evaluaciones
+    // Obtener categorías con evaluaciones - SOLO las del área auditada
+    let filtroCategoria = '';
+    if (auditoria.area_evaluada === 'pista') {
+      filtroCategoria = "AND c.nombre = 'PISTA'";
+    } else if (auditoria.area_evaluada === 'tienda') {
+      filtroCategoria = "AND c.nombre = 'TIENDA'";
+    }
+
     const categorias = await allAsync(`
       SELECT DISTINCT c.*
       FROM categorias c
       JOIN items_auditoria i ON c.id = i.categoria_id
       JOIN evaluaciones_items e ON i.id = e.item_id
       WHERE e.auditoria_id = ?
+      ${filtroCategoria}
       ORDER BY c.orden
     `, [id]);
     

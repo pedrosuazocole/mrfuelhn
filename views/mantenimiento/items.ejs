@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .nuevo-item-form {
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .nuevo-item-form .form-group { margin: 0; flex: 1; min-width: 150px; }
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-info  { flex: 1; min-width: 120px; }
+    .item-nombre { font-weight: 500; color: #333; font-size: 15px; }
+    .item-desc   { font-size: 13px; color: #888; margin-top: 2px; }
+    .item-inactivo .item-nombre { color: #aaa; text-decoration: line-through; }
+    @media (max-width: 600px) {
+      .item-row { flex-direction: column; align-items: flex-start; }
+      .nuevo-item-form { flex-direction: column; }
+      .nuevo-item-form button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-list"></i> <%= categoria.nombre %>
+      </h1>
+      <a href="/mantenimiento/admin/categorias" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+      </a>
+    </div>
+
+    <!-- Nuevo ítem -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header"><i class="fas fa-plus"></i> Nuevo Ítem</div>
+      <form method="POST"
+            action="/mantenimiento/admin/categorias/<%= categoria.id %>/items"
+            class="nuevo-item-form">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" name="nombre" required class="form-control"
+                 placeholder="Ej: Limpieza de filtros">
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" name="descripcion" class="form-control"
+                 placeholder="Descripción breve">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Agregar
+        </button>
+      </form>
+    </div>
+
+    <!-- Lista de ítems -->
+    <div class="card">
+      <% if (items.length === 0) { %>
+        <div style="padding: 30px; text-align: center; color: #aaa;">
+          <i class="fas fa-list" style="font-size:40px;opacity:0.3;display:block;margin-bottom:10px;"></i>
+          No hay ítems en esta categoría.
+        </div>
+      <% } else { %>
+        <% items.forEach(item => { %>
+        <div class="item-row <%= item.activo ? '' : 'item-inactivo' %>">
+          <div class="item-info">
+            <div class="item-nombre">
+              <i class="fas fa-<%= item.activo ? 'check-circle' : 'circle' %>"
+                 style="color:<%= item.activo ? '#28a745' : '#ccc' %>; margin-right:6px;"></i>
+              <%= item.nombre %>
+            </div>
+            <% if (item.descripcion) { %>
+            <div class="item-desc"><%= item.descripcion %></div>
+            <% } %>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+            <span class="badge <%= item.activo ? 'badge-success' : 'badge-secondary' %>">
+              <%= item.activo ? 'Activo' : 'Inactivo' %>
+            </span>
+            <button class="btn btn-sm <%= item.activo ? 'btn-warning' : 'btn-success' %>"
+                    onclick="toggleItem(<%= item.id %>, this)">
+              <i class="fas fa-<%= item.activo ? 'toggle-off' : 'toggle-on' %>"></i>
+              <%= item.activo ? 'Desactivar' : 'Activar' %>
+            </button>
+          </div>
+        </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  <script>
+    async function toggleItem(id, btn) {
+      try {
+        const resp = await fetch(`/mantenimiento/admin/items/${id}/toggle`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) location.reload();
+        else alert('❌ Error al actualizar ítem');
+      } catch (e) { alert('❌ Error de conexión'); }
+    }
+  </script>
+</body>
+</html>

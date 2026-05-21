@@ -1,7 +1,7 @@
 <nav class="navbar">
   <div class="navbar-container">
     <div class="navbar-brand">
-      <div class="logo-texaco">⭐</div>
+      <img src="/images/logo-mrfuel.png" alt="Mr. Fuel" style="width: 40px; height: 40px; object-fit: contain;">
       <span class="brand-text">Mr. Fuel</span>
     </div>
     
@@ -13,10 +13,17 @@
     </button>
     
     <ul class="navbar-menu" id="navbarMenu">
+      <% if (user.userRole !== 'tecnico') { %>
       <li><a href="/dashboard" class="<%= currentPath === '/dashboard' ? 'active' : '' %>">
         <i class="fas fa-home"></i> Dashboard
       </a></li>
-      
+      <% } %>
+
+      <li><a href="/mantenimiento" class="<%= currentPath.startsWith('/mantenimiento') ? 'active' : '' %>">
+        <i class="fas fa-tools"></i> Mantenimiento
+      </a></li>
+
+      <% if (user.userRole !== 'tecnico') { %>
       <li><a href="/auditorias-v2" class="<%= currentPath.startsWith('/auditorias') ? 'active' : '' %>">
         <i class="fas fa-clipboard-check"></i> Auditorías v2.0
       </a></li>
@@ -39,6 +46,7 @@
       <li><a href="/admin/whatsapp" class="<%= currentPath.startsWith('/admin/whatsapp') ? 'active' : '' %>">
         <i class="fab fa-whatsapp"></i> WhatsApp
       </a></li>
+      <% } %>
       <% } %>
     </ul>
     

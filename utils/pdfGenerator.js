@@ -30,7 +30,14 @@ async function generarPDFAuditoria(auditoriaId) {
       throw new Error('Auditoría no encontrada');
     }
     
-    // Obtener evaluaciones
+    // Obtener evaluaciones - solo del área auditada
+    let filtroAreaPdf = '';
+    if (auditoria.area_evaluada === 'pista') {
+      filtroAreaPdf = "AND c.nombre = 'PISTA'";
+    } else if (auditoria.area_evaluada === 'tienda') {
+      filtroAreaPdf = "AND c.nombre = 'TIENDA'";
+    }
+
     const evaluaciones = await allAsync(`
       SELECT 
         ev.*,
@@ -40,10 +47,33 @@ async function generarPDFAuditoria(auditoriaId) {
       INNER JOIN items_auditoria i ON ev.item_id = i.id
       INNER JOIN categorias c ON i.categoria_id = c.id
       WHERE ev.auditoria_id = ?
+      ${filtroAreaPdf}
       ORDER BY c.orden, i.orden
     `, [auditoriaId]);
     
     console.log(`📋 Evaluaciones encontradas: ${evaluaciones.length}`);
+    
+    // Obtener fotos de cada evaluación
+    const fotos = await allAsync(`
+      SELECT 
+        fi.evaluacion_id,
+        fi.ruta_archivo as ruta_foto
+      FROM fotos_items fi
+      INNER JOIN evaluaciones_items ev ON fi.evaluacion_id = ev.id
+      WHERE ev.auditoria_id = ?
+      ORDER BY fi.id
+    `, [auditoriaId]);
+    
+    console.log(`📸 Fotos encontradas: ${fotos.length}`);
+    
+    // Agrupar fotos por evaluacion_id
+    const fotosPorEvaluacion = {};
+    fotos.forEach(foto => {
+      if (!fotosPorEvaluacion[foto.evaluacion_id]) {
+        fotosPorEvaluacion[foto.evaluacion_id] = [];
+      }
+      fotosPorEvaluacion[foto.evaluacion_id].push(foto.ruta_foto);
+    });
     
     // Agrupar por categoría
     const porCategoria = {};
@@ -52,6 +82,8 @@ async function generarPDFAuditoria(auditoriaId) {
         if (!porCategoria[ev.categoria_nombre]) {
           porCategoria[ev.categoria_nombre] = [];
         }
+        // Agregar fotos a cada evaluación
+        ev.fotos = fotosPorEvaluacion[ev.id] || [];
         porCategoria[ev.categoria_nombre].push(ev);
       });
     }

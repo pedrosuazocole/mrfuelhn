@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* ── Layout del checklist ─────────────────────────── */
+    .categoria-bloque {
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: visible;
+      position: relative;
+    }
+    .categoria-header {
+      background: #ED1C24;
+      color: white;
+      padding: 16px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px 8px 0 0;
+    }
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-name { font-weight: 500; color: #333; padding-top: 6px; }
+
+    /* Botones Sí / No */
+    .cumple-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn-cumple {
+      padding: 7px 14px;
+      border: 2px solid #ddd;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-cumple.si          { color: #28a745; border-color: #28a745; }
+    .btn-cumple.si.active   { background: #28a745; color: white; }
+    .btn-cumple.no          { color: #dc3545; border-color: #dc3545; }
+    .btn-cumple.no.active   { background: #dc3545; color: white; }
+
+    /* Fotos */
+    .fotos-container {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      max-height: 200px; overflow-y: auto; padding: 5px 0;
+    }
+    .foto-slot    { position: relative; display: inline-block; }
+    .foto-preview {
+      width: 80px; height: 80px;
+      border: 2px dashed #ddd; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative; overflow: hidden;
+    }
+    .foto-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Responsive móvil */
+    @media (max-width: 600px) {
+      .item-row { grid-template-columns: 1fr; gap: 8px; }
+      .categoria-header { font-size: 16px; padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-tools"></i> Nuevo Mantenimiento</h1>
+      <a href="/mantenimiento" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+      </a>
+    </div>
+
+    <% if (categorias.length === 0) { %>
+      <div class="card" style="padding: 30px; text-align: center; color: #666;">
+        <p>No hay categorías de mantenimiento activas.</p>
+        <% if (user.userRole === 'admin') { %>
+        <a href="/mantenimiento/admin/categorias" class="btn btn-primary" style="margin-top: 10px;">
+          <i class="fas fa-plus"></i> Crear categoría
+        </a>
+        <% } %>
+      </div>
+    <% } else { %>
+
+    <form id="formMantenimiento" enctype="multipart/form-data">
+      <!-- Datos generales -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">Información General</div>
+        <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label>Estación *</label>
+            <select name="estacion_id" id="estacion_id" required class="form-control">
+              <option value="">Seleccionar estación...</option>
+              <% estaciones.forEach(est => { %>
+              <option value="<%= est.id %>"><%= est.nombre %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Categoría *</label>
+            <select name="categoria_id" id="categoria_id" required class="form-control">
+              <option value="">Seleccionar categoría...</option>
+              <% categorias.forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.nombre %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" name="fecha_visita" id="fecha_visita" required class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Hora *</label>
+            <input type="time" name="hora_visita" id="hora_visita" required class="form-control">
+          </div>
+        </div>
+      </div>
+
+      <!-- Checklist dinámico por categoría -->
+      <div id="checklist-area">
+        <% categorias.forEach(cat => { %>
+        <div class="categoria-bloque" id="cat-bloque-<%= cat.id %>" style="display: none;">
+          <div class="categoria-header">
+            <i class="fas fa-tools"></i> <%= cat.nombre %>
+          </div>
+          <% if (cat.items.length === 0) { %>
+            <div style="padding: 20px; color: #666; text-align: center;">
+              No hay ítems en esta categoría.
+              <% if (user.userRole === 'admin') { %>
+              <a href="/mantenimiento/admin/categorias/<%= cat.id %>/items">Agregar ítems</a>
+              <% } %>
+            </div>
+          <% } else { %>
+            <% cat.items.forEach(item => { %>
+            <div class="item-row">
+              <!-- Nombre + botones Si/No -->
+              <div>
+                <div class="item-name"><%= item.nombre %></div>
+                <div class="cumple-buttons" style="margin-top: 8px;">
+                  <button type="button"
+                          class="btn-cumple si"
+                          data-item="<%= item.id %>"
+                          data-valor="1"
+                          onclick="marcarCumplimiento(this)">
+                    <i class="fas fa-check"></i> Sí
+                  </button>
+                  <button type="button"
+                          class="btn-cumple no"
+                          data-item="<%= item.id %>"
+                          data-valor="0"
+                          onclick="marcarCumplimiento(this)">
+                    <i class="fas fa-times"></i> No
+                  </button>
+                  <input type="hidden" id="cumple-<%= item.id %>" value="">
+                </div>
+                <!-- Observación -->
+                <input type="text"
+                       id="obs-<%= item.id %>"
+                       class="form-control"
+                       style="margin-top: 8px; font-size: 13px;"
+                       placeholder="Observación (opcional)">
+              </div>
+
+              <!-- Fotos -->
+              <div>
+                <div style="font-size: 12px; color: #666; margin-bottom: 4px; text-align: center;">
+                  Fotos <span data-count-for="<%= item.id %>">0</span>/<%= item.max_fotos %>
+                </div>
+                <div class="fotos-container">
+                  <% for (let i = 1; i <= item.max_fotos; i++) { %>
+                  <div class="foto-slot">
+                    <div class="foto-preview" data-foto-preview="<%= item.id %>-<%= i %>">
+                      <i class="fas fa-camera" style="font-size: 22px; color: #ccc;"></i>
+                    </div>
+                    <input type="file"
+                           accept="image/*"
+                           capture="environment"
+                           style="display: none;"
+                           data-foto-input="<%= item.id %>-<%= i %>"
+                           name="fotos_item_<%= item.id %>">
+                  </div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+            <% }); %>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+
+      <!-- Observaciones generales -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">Observaciones y Recomendaciones</div>
+        <div style="padding: 20px; display: grid; gap: 16px;">
+          <div class="form-group">
+            <label>Observaciones Generales</label>
+            <textarea name="observaciones_generales" class="form-control" rows="3"
+                      placeholder="Comentarios generales sobre el mantenimiento..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Recomendaciones</label>
+            <textarea name="recomendaciones" class="form-control" rows="3"
+                      placeholder="Recomendaciones para mejorar..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón guardar -->
+      <div style="text-align: center; margin-bottom: 30px;">
+        <button type="submit" class="btn btn-primary btn-lg" id="btnGuardar">
+          <i class="fas fa-save"></i> Guardar Mantenimiento
+        </button>
+      </div>
+    </form>
+    <% } %>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  <script>
+    // ── Fecha y hora local Honduras (UTC-6) ──────────────────────────────────
+    (function () {
+      const ahora = new Date();
+      const offset = -6 * 60;
+      const local  = new Date(ahora.getTime() + (ahora.getTimezoneOffset() + offset) * 60000);
+      const hoy    = local.getFullYear() + '-' +
+                     String(local.getMonth() + 1).padStart(2, '0') + '-' +
+                     String(local.getDate()).padStart(2, '0');
+      const hora   = String(local.getHours()).padStart(2, '0') + ':' +
+                     String(local.getMinutes()).padStart(2, '0');
+      document.getElementById('fecha_visita').value = hoy;
+      document.getElementById('hora_visita').value  = hora;
+    })();
+
+    // ── Mostrar checklist de la categoría seleccionada ───────────────────────
+    document.getElementById('categoria_id').addEventListener('change', function () {
+      document.querySelectorAll('.categoria-bloque').forEach(b => b.style.display = 'none');
+      if (this.value) {
+        const bloque = document.getElementById('cat-bloque-' + this.value);
+        if (bloque) bloque.style.display = 'block';
+      }
+    });
+
+    // ── Botones Sí / No ──────────────────────────────────────────────────────
+    function marcarCumplimiento(btn) {
+      const itemId = btn.dataset.item;
+      document.querySelectorAll(`.btn-cumple[data-item="${itemId}"]`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('cumple-' + itemId).value = btn.dataset.valor;
+    }
+
+    // ── Fotos: click en preview abre el input ────────────────────────────────
+    document.querySelectorAll('.foto-preview').forEach(preview => {
+      preview.addEventListener('click', () => {
+        const slotId = preview.dataset.fotoPreview;
+        const input  = document.querySelector(`[data-foto-input="${slotId}"]`);
+        if (input) input.click();
+      });
+    });
+
+    document.querySelectorAll('[data-foto-input]').forEach(input => {
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const slotId = input.dataset.fotoInput;
+        const preview = document.querySelector(`[data-foto-preview="${slotId}"]`);
+        const itemId  = slotId.split('-')[0];
+        const reader  = new FileReader();
+        reader.onload = ev => {
+          preview.innerHTML = `
+            <img src="${ev.target.result}" alt="Foto"
+                 style="width:100%;height:100%;object-fit:cover;">
+            <span data-remove-foto="${slotId}"
+                  style="position:absolute;top:2px;right:2px;background:#dc3545;color:white;
+                         border-radius:50%;width:20px;height:20px;display:flex;
+                         align-items:center;justify-content:center;font-size:12px;cursor:pointer;">×</span>`;
+          actualizarContador(itemId);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    document.addEventListener('click', e => {
+      if (e.target.matches('[data-remove-foto]')) {
+        e.stopPropagation();
+        const slotId  = e.target.dataset.removeFoto;
+        const preview = document.querySelector(`[data-foto-preview="${slotId}"]`);
+        const input   = document.querySelector(`[data-foto-input="${slotId}"]`);
+        const itemId  = slotId.split('-')[0];
+        preview.innerHTML = '<i class="fas fa-camera" style="font-size:22px;color:#ccc;"></i>';
+        if (input) input.value = '';
+        actualizarContador(itemId);
+      }
+    });
+
+    function actualizarContador(itemId) {
+      const inputs  = document.querySelectorAll(`[data-foto-input^="${itemId}-"]`);
+      let count = 0;
+      inputs.forEach(inp => { if (inp.files && inp.files.length > 0) count++; });
+      const counter = document.querySelector(`[data-count-for="${itemId}"]`);
+      if (counter) counter.textContent = count;
+    }
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+    document.getElementById('formMantenimiento').addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const categoriaId = document.getElementById('categoria_id').value;
+      if (!categoriaId) return alert('Selecciona una categoría');
+
+      // Recolectar evaluaciones del bloque activo
+      const bloque = document.getElementById('cat-bloque-' + categoriaId);
+      if (!bloque) return alert('Categoría no encontrada');
+
+      const evaluaciones = [];
+      bloque.querySelectorAll('[id^="cumple-"]').forEach(hidden => {
+        const itemId = hidden.id.replace('cumple-', '');
+        evaluaciones.push({
+          item_id:     itemId,
+          cumple:      hidden.value === '1',
+          observacion: (document.getElementById('obs-' + itemId) || {}).value || ''
+        });
+      });
+
+      if (evaluaciones.length === 0) return alert('No hay ítems para evaluar');
+
+      const btn = document.getElementById('btnGuardar');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+      try {
+        const formData = new FormData(e.target);
+        formData.set('evaluaciones', JSON.stringify(evaluaciones));
+
+        const resp   = await fetch('/mantenimiento/nuevo', { method: 'POST', body: formData });
+        const result = await resp.json();
+
+        if (result.success) {
+          // Abrir WhatsApp para cada número configurado
+          if (result.whatsappUrls && result.whatsappUrls.length > 0) {
+            result.whatsappUrls.forEach(item => window.open(item.url, '_blank'));
+          }
+          alert('✅ Mantenimiento guardado exitosamente');
+          window.location.href = `/mantenimiento/${result.mantenimientoId}`;
+        } else {
+          throw new Error(result.mensaje || 'Error al guardar');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('❌ ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Guardar Mantenimiento';
+      }
+    });
+  </script>
+</body>
+</html>

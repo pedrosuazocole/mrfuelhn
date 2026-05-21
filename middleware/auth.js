@@ -49,6 +49,9 @@ const isSupervisorOrAdmin = hasRole('admin', 'supervisor');
  */
 const redirectIfAuthenticated = (req, res, next) => {
   if (req.session && req.session.userId) {
+    if (req.session.userRole === 'tecnico') {
+      return res.redirect('/mantenimiento');
+    }
     return res.redirect('/dashboard');
   }
   next();

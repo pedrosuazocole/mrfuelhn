@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated } = require('../middleware/auth');
+const { isAuthenticated, hasRole } = require('../middleware/auth');
 const { allAsync, getAsync } = require('../config/database');
 
 router.use(isAuthenticated);
+router.use(hasRole('admin', 'supervisor', 'auditor'));
 
 router.get('/', async (req, res) => {
   try {
@@ -11,13 +12,25 @@ router.get('/', async (req, res) => {
     const totalAuditorias = await getAsync('SELECT COUNT(*) as total FROM auditorias_v2');
     const totalEstaciones = await getAsync('SELECT COUNT(*) as total FROM estaciones WHERE activo = 1');
     const promedioGeneral = await getAsync('SELECT AVG(calificacion_general) as promedio FROM auditorias_v2');
+
+    // Stats de mantenimiento
+    const totalMantenimientos   = await getAsync('SELECT COUNT(*) as total FROM mantenimientos');
+    const promedioMantenimiento = await getAsync('SELECT AVG(calificacion_general) as promedio FROM mantenimientos');
+    const mantPorEstacion       = await allAsync(`
+      SELECT e.nombre AS estacion, COUNT(m.id) AS total
+      FROM estaciones e
+      LEFT JOIN mantenimientos m ON e.id = m.estacion_id
+      WHERE e.activo = 1
+      GROUP BY e.id
+      ORDER BY total DESC
+    `);
     
     const ultimasAuditorias = await allAsync(`
       SELECT a.*, e.nombre as estacion_nombre, u.nombre as auditor_nombre
       FROM auditorias_v2 a
       INNER JOIN estaciones e ON a.estacion_id = e.id
       INNER JOIN usuarios u ON a.auditor_id = u.id
-      ORDER BY a.fecha_creacion DESC
+      ORDER BY a.fecha_visita DESC, a.hora_visita DESC
       LIMIT 5
     `);
     
@@ -37,9 +50,12 @@ router.get('/', async (req, res) => {
       user: req.session,
       titulo: 'Dashboard',
       stats: {
-        totalAuditorias: totalAuditorias.total,
-        totalEstaciones: totalEstaciones.total,
-        promedioGeneral: Math.round(promedioGeneral.promedio || 0)
+        totalAuditorias:       totalAuditorias.total,
+        totalEstaciones:       totalEstaciones.total,
+        promedioGeneral:       Math.round(promedioGeneral.promedio || 0),
+        totalMantenimientos:   totalMantenimientos.total,
+        promedioMantenimiento: Math.round(promedioMantenimiento.promedio || 0),
+        mantPorEstacion
       },
       ultimasAuditorias,
       estadisticasPorEstacion

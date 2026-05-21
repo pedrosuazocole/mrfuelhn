@@ -24,12 +24,26 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-// Crear directorio de uploads si no existe
-const uploadsDir = path.join(__dirname, 'public', 'uploads', 'auditorias');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('✅ Directorio de uploads creado');
+// Directorio de uploads: usar volumen Railway si existe, si no usar public/uploads
+const uploadsBase = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
+  : path.join(__dirname, 'public', 'uploads');
+
+// Exportar la ruta como variable de entorno para que config/multer.js la use
+process.env.UPLOADS_BASE_PATH = uploadsBase;
+
+const uploadsDir = path.join(uploadsBase, 'auditorias');
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  console.log('✅ Directorio de uploads listo:', uploadsDir);
+} catch (err) {
+  console.error('❌ Error creando directorio uploads:', err.message);
 }
+
+// Servir archivos del volumen como estáticos en /uploads
+app.use('/uploads', express.static(uploadsBase));
 
 // ===================================
 // INICIALIZAR BASE DE DATOS
@@ -89,28 +103,30 @@ app.use((req, res, next) => {
 // RUTAS
 // ===================================
 
-const authRoutes = require('./routes/auth');
-const dashboardRoutes = require('./routes/dashboard');
-const auditoriasRoutes = require('./routes/auditorias');
+const authRoutes         = require('./routes/auth');
+const dashboardRoutes    = require('./routes/dashboard');
+const auditoriasRoutes   = require('./routes/auditorias');
 const auditoriasV2Routes = require('./routes/auditorias-v2');
-const adminRoutes = require('./routes/admin');
-const whatsappRoutes = require('./routes/whatsapp');
-const ticketsRoutes = require('./routes/tickets');
-const estacionesRoutes = require('./routes/estaciones');
-const usuariosRoutes = require('./routes/usuarios');
+const adminRoutes        = require('./routes/admin');
+const whatsappRoutes     = require('./routes/whatsapp');
+const ticketsRoutes      = require('./routes/tickets');
+const estacionesRoutes   = require('./routes/estaciones');
+const usuariosRoutes     = require('./routes/usuarios');
+const mantenimientoRoutes = require('./routes/mantenimiento');
 
 // Rutas públicas
 app.use('/', authRoutes);
 
 // Rutas protegidas
-app.use('/dashboard', dashboardRoutes);
-app.use('/auditorias', auditoriasRoutes);
-app.use('/auditorias-v2', auditoriasV2Routes);
-app.use('/admin', adminRoutes);
+app.use('/dashboard',      dashboardRoutes);
+app.use('/auditorias',     auditoriasRoutes);
+app.use('/auditorias-v2',  auditoriasV2Routes);
+app.use('/admin',          adminRoutes);
 app.use('/admin/whatsapp', whatsappRoutes);
-app.use('/tickets', ticketsRoutes);
-app.use('/estaciones', estacionesRoutes);
-app.use('/usuarios', usuariosRoutes);
+app.use('/tickets',        ticketsRoutes);
+app.use('/estaciones',     estacionesRoutes);
+app.use('/usuarios',       usuariosRoutes);
+app.use('/mantenimiento',  mantenimientoRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {

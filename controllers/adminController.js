@@ -16,6 +16,7 @@ exports.listarCategorias = async (req, res) => {
              COUNT(CASE WHEN i.activo = 1 THEN 1 END) as items_activos
       FROM categorias c
       LEFT JOIN items_auditoria i ON c.id = i.categoria_id
+      WHERE c.nombre NOT IN ('BODEGA', 'COCINA')
       GROUP BY c.id
       ORDER BY c.orden ASC
     `);

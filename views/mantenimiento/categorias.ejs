@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .nueva-cat-form {
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .nueva-cat-form .form-group { margin: 0; flex: 1; min-width: 150px; }
+    .cat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .cat-row:last-child { border-bottom: none; }
+    .cat-info { flex: 1; min-width: 120px; }
+    .cat-nombre { font-weight: 600; font-size: 15px; color: #333; }
+    .cat-desc   { font-size: 13px; color: #888; margin-top: 2px; }
+    @media (max-width: 600px) {
+      .cat-row { flex-direction: column; align-items: flex-start; }
+      .nueva-cat-form { flex-direction: column; }
+      .nueva-cat-form button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-cog"></i> Categorías de Mantenimiento</h1>
+      <a href="/mantenimiento" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+      </a>
+    </div>
+
+    <!-- Nueva categoría -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header"><i class="fas fa-plus"></i> Nueva Categoría</div>
+      <form method="POST" action="/mantenimiento/admin/categorias" class="nueva-cat-form">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" name="nombre" required class="form-control"
+                 placeholder="Ej: Generador, Plomería...">
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" name="descripcion" class="form-control"
+                 placeholder="Descripción breve">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Agregar
+        </button>
+      </form>
+    </div>
+
+    <!-- Lista de categorías -->
+    <div class="card">
+      <% if (categorias.length === 0) { %>
+        <div style="padding: 30px; text-align: center; color: #aaa;">
+          <i class="fas fa-folder-open" style="font-size:40px;opacity:0.3;display:block;margin-bottom:10px;"></i>
+          No hay categorías aún.
+        </div>
+      <% } else { %>
+        <% categorias.forEach(cat => { %>
+        <div class="cat-row">
+          <div class="cat-info">
+            <div class="cat-nombre">
+              <i class="fas fa-tools" style="color:#ED1C24; margin-right:6px;"></i>
+              <%= cat.nombre %>
+            </div>
+            <% if (cat.descripcion) { %>
+            <div class="cat-desc"><%= cat.descripcion %></div>
+            <% } %>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+            <span class="badge badge-secondary">
+              <i class="fas fa-list"></i> <%= cat.total_items %> ítems
+            </span>
+            <a href="/mantenimiento/admin/categorias/<%= cat.id %>/items"
+               class="btn btn-sm btn-primary">
+              <i class="fas fa-list"></i> Ver Ítems
+            </a>
+          </div>
+        </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

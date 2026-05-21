@@ -67,7 +67,12 @@ exports.procesarLogin = async (req, res) => {
     
     console.log(`✅ Login exitoso: ${usuario.nombre} (${usuario.rol})`);
     
-    res.redirect('/dashboard');
+    // Técnicos van directamente a Mantenimiento
+    if (usuario.rol === 'tecnico') {
+      res.redirect('/mantenimiento');
+    } else {
+      res.redirect('/dashboard');
+    }
     
   } catch (error) {
     console.error('Error en login:', error);

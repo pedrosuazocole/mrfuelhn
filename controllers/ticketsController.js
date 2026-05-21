@@ -164,12 +164,40 @@ exports.crearTicket = async (req, res) => {
         foto_evidencia
       ]);
       
+      const ticketId = resultado.lastID;
+      
+      // Notificación WhatsApp al asignado (una sola consulta)
+      let whatsappUrl = null;
+      if (asignado_a) {
+        try {
+          const asignado = await getAsync(
+            'SELECT nombre, telefono FROM usuarios WHERE id = ?',
+            [asignado_a]
+          );
+          if (asignado && asignado.telefono) {
+            const numero = asignado.telefono.replace(/[^0-9]/g, '');
+            const mensaje = encodeURIComponent(
+              `Hola ${asignado.nombre}. Se te ha asignado un nuevo ticket en Mr. Fuel.\n` +
+              `ID de Ticket: #${ticketId}\n` +
+              `Título: ${titulo}\n` +
+              `Prioridad: ${prioridad}\n` +
+              `Por favor revisa la plataforma.`
+            );
+            whatsappUrl = `https://wa.me/${numero}?text=${mensaje}`;
+            console.log(`📱 WhatsApp ticket #${ticketId} → ${asignado.nombre}`);
+          }
+        } catch (waErr) {
+          console.error('Error al preparar notificación WhatsApp:', waErr);
+        }
+      }
+      
       res.json({
         success: true,
-        ticketId: resultado.lastID,
-        mensaje: 'Ticket creado exitosamente'
+        ticketId,
+        mensaje: 'Ticket creado exitosamente',
+        whatsappUrl
       });
-      
+            
     } catch (error) {
       console.error('Error:', error);
       res.status(500).json({ success: false, mensaje: 'Error al crear ticket' });
@@ -264,7 +292,33 @@ exports.reasignarTicket = async (req, res) => {
     
     await runAsync('UPDATE tickets SET asignado_a = ? WHERE id = ?', [asignado_a, id]);
     
-    res.json({ success: true, mensaje: 'Ticket reasignado' });
+    // Notificación WhatsApp al nuevo asignado
+    let whatsappUrl = null;
+    if (asignado_a) {
+      try {
+        const ticket = await getAsync('SELECT titulo, prioridad FROM tickets WHERE id = ?', [id]);
+        const asignado = await getAsync(
+          'SELECT nombre, telefono FROM usuarios WHERE id = ?',
+          [asignado_a]
+        );
+        if (asignado && asignado.telefono && ticket) {
+          const numero = asignado.telefono.replace(/[^0-9]/g, '');
+          const mensaje = encodeURIComponent(
+            `Hola ${asignado.nombre}. Se te ha asignado un nuevo ticket en Mr. Fuel.\n` +
+            `ID de Ticket: #${id}\n` +
+            `Título: ${ticket.titulo}\n` +
+            `Prioridad: ${ticket.prioridad}\n` +
+            `Por favor revisa la plataforma.`
+          );
+          whatsappUrl = `https://wa.me/${numero}?text=${mensaje}`;
+          console.log(`📱 WhatsApp reasignación ticket #${id} → ${asignado.nombre}`);
+        }
+      } catch (waErr) {
+        console.error('Error al preparar notificación WhatsApp:', waErr);
+      }
+    }
+    
+    res.json({ success: true, mensaje: 'Ticket reasignado', whatsappUrl });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ success: false, mensaje: 'Error al reasignar' });

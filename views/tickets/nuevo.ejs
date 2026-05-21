@@ -96,7 +96,7 @@
             
             <div class="form-group">
               <label>Costo Estimado (L)</label>
-              <input type="number" name="costo_estimado" class="form-control" step="0.01" min="0" placeholder="0.00">
+              <input type="number" name="costo_estimado" class="form-control" step="0.00001" min="0" placeholder="0.00000">
             </div>
           </div>
         </div>
@@ -157,6 +157,10 @@
         const result = await response.json();
         
         if (result.success) {
+          // Abrir WhatsApp si hay número asignado
+          if (result.whatsappUrl) {
+            window.open(result.whatsappUrl, '_blank');
+          }
           alert('✅ Ticket creado exitosamente');
           window.location.href = `/tickets/${result.ticketId}`;
         } else {

@@ -46,8 +46,46 @@
         <div class="stat-label">Promedio General</div>
       </div>
     </div>
-    
-    <!-- ÚLTIMAS AUDITORÍAS -->
+
+    <!-- ESTADÍSTICAS DE MANTENIMIENTO -->
+    <div class="stats-grid" style="margin-top: 0;">
+      <div class="stat-card">
+        <div class="stat-icon" style="color: #6f42c1;">
+          <i class="fas fa-tools"></i>
+        </div>
+        <div class="stat-value"><%= stats.totalMantenimientos %></div>
+        <div class="stat-label">Mantenimientos Totales</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: <%= stats.promedioMantenimiento >= 80 ? '#28a745' : stats.promedioMantenimiento >= 60 ? '#ffc107' : '#dc3545' %>;">
+          <i class="fas fa-percentage"></i>
+        </div>
+        <div class="stat-value"><%= stats.promedioMantenimiento %>%</div>
+        <div class="stat-label">Promedio Mantenimiento</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: #fd7e14;">
+          <i class="fas fa-building"></i>
+        </div>
+        <div style="width:100%;">
+          <% if (stats.mantPorEstacion && stats.mantPorEstacion.length > 0) { %>
+            <% stats.mantPorEstacion.forEach(est => { %>
+            <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-bottom:1px solid #f0f0f0;">
+              <span style="color:#555;"><%= est.estacion %></span>
+              <strong style="color:#333;"><%= est.total %></strong>
+            </div>
+            <% }); %>
+          <% } else { %>
+            <div class="stat-value">0</div>
+          <% } %>
+          <div class="stat-label" style="margin-top:6px;">Mantenimientos por Estación</div>
+        </div>
+      </div>
+    </div>
+
+        <!-- ÚLTIMAS AUDITORÍAS -->
     <div class="card">
       <div class="card-header">
         <i class="fas fa-history"></i> Últimas Auditorías
@@ -70,7 +108,7 @@
             <tbody>
               <% ultimasAuditorias.forEach(aud => { %>
               <tr>
-                <td><%= new Date(aud.fecha_visita).toLocaleDateString('es-HN') %></td>
+                <td><%= aud.fecha_visita ? aud.fecha_visita.split('T')[0].split('-').reverse().join('/') : '' %></td>
                 <td><%= aud.estacion_nombre %></td>
                 <td><%= aud.auditor_nombre %></td>
                 <td>

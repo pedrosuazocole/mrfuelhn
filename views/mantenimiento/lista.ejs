@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .filtros-form {
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .filtros-form .form-group {
+      margin: 0;
+      flex: 1;
+      min-width: 140px;
+    }
+    .filtros-form .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .mant-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .mant-card:last-child { border-bottom: none; }
+    .mant-card-info { flex: 1; min-width: 140px; }
+    .mant-card-info .mant-titulo {
+      font-weight: 600;
+      font-size: 15px;
+      color: #333;
+    }
+    .mant-card-info .mant-meta {
+      font-size: 12px;
+      color: #888;
+      margin-top: 3px;
+    }
+    .mant-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .empty-state {
+      padding: 50px 20px;
+      text-align: center;
+      color: #aaa;
+    }
+    .empty-state i {
+      font-size: 56px;
+      opacity: 0.25;
+      display: block;
+      margin-bottom: 14px;
+    }
+    .empty-state p { font-size: 16px; margin-bottom: 16px; }
+    @media (max-width: 600px) {
+      .mant-card { flex-direction: column; align-items: flex-start; }
+      .mant-card-actions { width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-tools"></i> Mantenimientos</h1>
+      <a href="/mantenimiento/nuevo" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nuevo
+      </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card" style="margin-bottom: 16px;">
+      <form method="GET" class="filtros-form">
+        <div class="form-group">
+          <label>Categoría</label>
+          <select name="categoria_id" class="form-control">
+            <option value="">Todas</option>
+            <% categorias.forEach(cat => { %>
+            <option value="<%= cat.id %>" <%= filtros.categoria_id == cat.id ? 'selected' : '' %>>
+              <%= cat.nombre %>
+            </option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Estación</label>
+          <select name="estacion_id" class="form-control">
+            <option value="">Todas</option>
+            <% estaciones.forEach(est => { %>
+            <option value="<%= est.id %>" <%= filtros.estacion_id == est.id ? 'selected' : '' %>>
+              <%= est.nombre %>
+            </option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="btn-group">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter"></i> Filtrar
+          </button>
+          <a href="/mantenimiento" class="btn btn-secondary">
+            <i class="fas fa-times"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista -->
+    <div class="card">
+      <% if (mantenimientos.length === 0) { %>
+        <div class="empty-state">
+          <i class="fas fa-tools"></i>
+          <p>No hay mantenimientos registrados</p>
+          <a href="/mantenimiento/nuevo" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Crear el primero
+          </a>
+        </div>
+      <% } else { %>
+        <% mantenimientos.forEach(m => { %>
+        <div class="mant-card">
+          <div class="mant-card-info">
+            <div class="mant-titulo">
+              <i class="fas fa-tools" style="color:#ED1C24; margin-right:6px;"></i>
+              #<%= m.id %> — <%= m.categoria_nombre %>
+            </div>
+            <div class="mant-meta">
+              <i class="fas fa-gas-pump"></i> <%= m.estacion_nombre %> &nbsp;·&nbsp;
+              <i class="fas fa-calendar"></i>
+              <%= m.fecha_visita ? m.fecha_visita.split('T')[0].split('-').reverse().join('/') : '' %>
+              &nbsp;·&nbsp;
+              <i class="fas fa-user"></i> <%= m.tecnico_nombre %>
+            </div>
+          </div>
+          <div class="mant-card-actions">
+            <span class="badge <%=
+              m.calificacion_general >= 80 ? 'badge-success' :
+              m.calificacion_general >= 60 ? 'badge-warning' : 'badge-danger' %>">
+              <%= m.calificacion_general %>%
+            </span>
+            <a href="/mantenimiento/<%= m.id %>" class="btn btn-sm btn-primary">
+              <i class="fas fa-eye"></i> Ver
+            </a>
+          </div>
+        </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <% if (user.userRole === 'admin') { %>
+    <div style="margin-top: 16px; text-align: right;">
+      <a href="/mantenimiento/admin/categorias" class="btn btn-secondary">
+        <i class="fas fa-cog"></i> Gestionar Categorías
+      </a>
+    </div>
+    <% } %>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

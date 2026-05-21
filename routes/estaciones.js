@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { isAuthenticated, isAdmin } = require('../middleware/auth');
+const { isAuthenticated, isAdmin, hasRole } = require('../middleware/auth');
 const { allAsync, getAsync, runAsync } = require('../config/database');
 
 router.use(isAuthenticated);
+router.use(hasRole('admin', 'supervisor', 'auditor'));
 
 router.get('/', async (req, res) => {
   const estaciones = await allAsync('SELECT * FROM estaciones ORDER BY nombre');

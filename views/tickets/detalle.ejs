@@ -84,9 +84,9 @@
             
             <% if (ticket.costo_estimado) { %>
             <div style="margin-bottom: 20px;">
-              <strong>Costo Estimado:</strong> L <%= parseFloat(ticket.costo_estimado).toFixed(2) %>
+              <strong>Costo Estimado:</strong> L <%= parseFloat(ticket.costo_estimado).toFixed(5) %>
               <% if (ticket.costo_real) { %>
-              <br><strong>Costo Real:</strong> L <%= parseFloat(ticket.costo_real).toFixed(2) %>
+              <br><strong>Costo Real:</strong> L <%= parseFloat(ticket.costo_real).toFixed(5) %>
               <% } %>
             </div>
             <% } %>
@@ -179,7 +179,7 @@
         
         <div class="form-group">
           <label>Costo Real (L)</label>
-          <input type="number" id="costo_real" class="form-control" step="0.01" min="0" placeholder="0.00">
+          <input type="number" id="costo_real" class="form-control" step="0.00001" min="0" placeholder="0.00000">
         </div>
         
         <div style="text-align: right; margin-top: 20px;">
@@ -273,6 +273,10 @@
         const result = await response.json();
         
         if (result.success) {
+          // Abrir WhatsApp si hay número del asignado
+          if (result.whatsappUrl) {
+            window.open(result.whatsappUrl, '_blank');
+          }
           alert('✅ Ticket reasignado');
           location.reload();
         } else {

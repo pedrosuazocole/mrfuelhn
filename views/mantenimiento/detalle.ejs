@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel v2.0</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 20px;
+    }
+    .info-cell strong { display: block; color: #888; font-size: 12px; margin-bottom: 3px; }
+    .info-cell span   { font-size: 15px; color: #333; }
+    .cal-badge {
+      font-size: 26px;
+      font-weight: 800;
+    }
+    .eval-list { padding: 0 20px 10px; }
+    .eval-row {
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .eval-row:last-child { border-bottom: none; }
+    .eval-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .eval-nombre { font-weight: 500; color: #333; }
+    .eval-estado {
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .cumple     { background: #d1e7dd; color: #0f5132; }
+    .no-cumple  { background: #f8d7da; color: #842029; }
+    .eval-obs { font-size: 13px; color: #777; margin-top: 5px; font-style: italic; }
+    .fotos-grid {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .fotos-grid img {
+      width: 88px; height: 88px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .fotos-grid img:hover { transform: scale(1.05); }
+    .obs-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 6px;
+      font-size: 14px;
+      color: #555;
+      line-height: 1.5;
+    }
+    @media (max-width: 600px) {
+      .info-grid { grid-template-columns: 1fr; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-tools"></i> Mantenimiento #<%= mant.id %></h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="/mantenimiento" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Volver
+        </a>
+        <a href="/mantenimiento/<%= mant.id %>/pdf" target="_blank" class="btn btn-primary">
+          <i class="fas fa-file-pdf"></i> Ver PDF
+        </a>
+        <% if (user.userRole === 'admin') { %>
+        <button class="btn btn-danger" onclick="eliminar(<%= mant.id %>)">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Info general -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header">Información General</div>
+      <div class="info-grid">
+        <div class="info-cell">
+          <strong>Estación</strong>
+          <span><i class="fas fa-gas-pump" style="color:#ED1C24"></i> <%= mant.estacion_nombre %></span>
+        </div>
+        <div class="info-cell">
+          <strong>Categoría</strong>
+          <span><i class="fas fa-tools" style="color:#ED1C24"></i> <%= mant.categoria_nombre %></span>
+        </div>
+        <div class="info-cell">
+          <strong>Fecha</strong>
+          <span><i class="fas fa-calendar"></i>
+            <%= mant.fecha_visita ? mant.fecha_visita.split('T')[0].split('-').reverse().join('/') : '' %>
+          </span>
+        </div>
+        <div class="info-cell">
+          <strong>Hora</strong>
+          <span><i class="fas fa-clock"></i> <%= mant.hora_visita %></span>
+        </div>
+        <div class="info-cell">
+          <strong>Técnico</strong>
+          <span><i class="fas fa-user"></i> <%= mant.tecnico_nombre %></span>
+        </div>
+        <div class="info-cell">
+          <strong>Calificación</strong>
+          <span class="cal-badge" style="color:<%=
+            mant.calificacion_general >= 80 ? '#28a745' :
+            mant.calificacion_general >= 60 ? '#e0a000' : '#dc3545' %>">
+            <%= mant.calificacion_general %>%
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Evaluaciones -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="card-header">
+        <i class="fas fa-list-check"></i> Evaluaciones
+        <span class="badge badge-secondary" style="margin-left:8px;"><%= evaluaciones.length %> ítems</span>
+      </div>
+      <div class="eval-list">
+        <% evaluaciones.forEach(ev => { %>
+        <div class="eval-row">
+          <div class="eval-top">
+            <span class="eval-nombre"><%= ev.item_nombre %></span>
+            <span class="eval-estado <%= ev.cumple ? 'cumple' : 'no-cumple' %>">
+              <%= ev.cumple ? '✓ Cumple' : '✗ No Cumple' %>
+            </span>
+          </div>
+          <% if (ev.observacion) { %>
+          <div class="eval-obs"><i class="fas fa-comment-alt"></i> <%= ev.observacion %></div>
+          <% } %>
+          <% if (ev.fotos && ev.fotos.length > 0) { %>
+          <div class="fotos-grid">
+            <% ev.fotos.forEach(foto => { %>
+            <img src="<%= foto.ruta_archivo %>" alt="Evidencia"
+                 onclick="window.open('<%= foto.ruta_archivo %>', '_blank')">
+            <% }); %>
+          </div>
+          <% } %>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <!-- Observaciones y recomendaciones -->
+    <% if (mant.observaciones_generales || mant.recomendaciones) { %>
+    <div class="card">
+      <div class="card-header"><i class="fas fa-comment-dots"></i> Observaciones y Recomendaciones</div>
+      <div style="padding: 16px 20px; display: grid; gap: 14px;">
+        <% if (mant.observaciones_generales) { %>
+        <div>
+          <strong style="color:#555;">Observaciones Generales</strong>
+          <div class="obs-box"><%= mant.observaciones_generales %></div>
+        </div>
+        <% } %>
+        <% if (mant.recomendaciones) { %>
+        <div>
+          <strong style="color:#555;">Recomendaciones</strong>
+          <div class="obs-box"><%= mant.recomendaciones %></div>
+        </div>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+  <script>
+    async function eliminar(id) {
+      if (!confirm('¿Eliminar este mantenimiento?\nEsta acción no se puede deshacer.')) return;
+      try {
+        const resp = await fetch(`/mantenimiento/${id}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (data.success) { alert('✅ Eliminado'); window.location.href = '/mantenimiento'; }
+        else alert('❌ ' + data.mensaje);
+      } catch (e) { alert('❌ Error al eliminar'); }
+    }
+  </script>
+</body>
+</html>

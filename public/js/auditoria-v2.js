@@ -70,10 +70,17 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('📋 Inicializando formulario de auditoría v2.0...');
   
   // Configurar fecha y hora actual por defecto
-  const hoy = new Date().toISOString().split('T')[0];
-  const ahora = new Date().toTimeString().slice(0, 5);
+  // Fecha y hora local de Honduras (UTC-6) sin desfase UTC
+  const ahora = new Date();
+  const offsetHonduras = -6 * 60; // UTC-6 en minutos
+  const localMs = ahora.getTime() + (ahora.getTimezoneOffset() + offsetHonduras) * 60000;
+  const local = new Date(localMs);
+  const hoy = local.getFullYear() + '-' +
+    String(local.getMonth() + 1).padStart(2, '0') + '-' +
+    String(local.getDate()).padStart(2, '0');
+  const ahoraHora = String(local.getHours()).padStart(2, '0') + ':' + String(local.getMinutes()).padStart(2, '0');
   document.getElementById('fecha_visita').value = hoy;
-  document.getElementById('hora_visita').value = ahora;
+  document.getElementById('hora_visita').value = ahoraHora;
   
   // Toggle de observaciones
   document.querySelectorAll('[data-toggle-observacion]').forEach(btn => {
@@ -93,63 +100,64 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  // Manejo de fotos
+  // Manejo de fotos - click en preview abre el input (input está fuera del preview)
   document.querySelectorAll('.foto-preview').forEach(preview => {
     preview.addEventListener('click', () => {
-      const slotId = preview.dataset.fotoSlot;
+      const slotId = preview.dataset.fotoPreview;
       const input = document.querySelector(`[data-foto-input="${slotId}"]`);
-      input.click();
+      if (input) input.click();
     });
   });
-  
+
+  // Cuando se selecciona una foto
   document.querySelectorAll('[data-foto-input]').forEach(input => {
     input.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      
+
       const slotId = input.dataset.fotoInput;
-      const preview = document.querySelector(`[data-foto-slot="${slotId}"]`);
+      const preview = document.querySelector(`[data-foto-preview="${slotId}"]`);
       const itemId = slotId.split('-')[0];
-      
-      // Mostrar preview
+
+      // Mostrar preview - el input queda intacto fuera del preview
       const reader = new FileReader();
       reader.onload = (event) => {
         preview.innerHTML = `
-          <img src="${event.target.result}" alt="Foto">
-          <span class="remove-foto" data-remove-foto="${slotId}">×</span>
+          <img src="${event.target.result}" alt="Foto" style="width:100%;height:100%;object-fit:cover;">
+          <span class="remove-foto" data-remove-foto="${slotId}"
+                style="position:absolute;top:2px;right:2px;background:#dc3545;color:white;
+                       border-radius:50%;width:20px;height:20px;display:flex;
+                       align-items:center;justify-content:center;font-size:12px;cursor:pointer;">×</span>
         `;
-        
-        // Actualizar contador
         actualizarContadorFotos(itemId);
       };
       reader.readAsDataURL(file);
     });
   });
-  
-  // Remover fotos
+
+  // Remover foto
   document.addEventListener('click', (e) => {
     if (e.target.matches('[data-remove-foto]')) {
+      e.stopPropagation();
       const slotId = e.target.dataset.removeFoto;
-      const preview = document.querySelector(`[data-foto-slot="${slotId}"]`);
+      const preview = document.querySelector(`[data-foto-preview="${slotId}"]`);
       const input = document.querySelector(`[data-foto-input="${slotId}"]`);
       const itemId = slotId.split('-')[0];
-      
+
       preview.innerHTML = '<i class="fas fa-camera" style="font-size: 24px; color: #ccc;"></i>';
-      input.value = '';
-      
+      if (input) input.value = '';
       actualizarContadorFotos(itemId);
     }
   });
-  
+
   function actualizarContadorFotos(itemId) {
     const inputs = document.querySelectorAll(`[data-foto-input^="${itemId}-"]`);
     let count = 0;
     inputs.forEach(input => {
-      if (input.files.length > 0) count++;
+      if (input.files && input.files.length > 0) count++;
     });
-    
     const counter = document.querySelector(`[data-count-for="${itemId}"]`);
-    counter.textContent = count;
+    if (counter) counter.textContent = count;
   }
   
   // Canvas de firma
