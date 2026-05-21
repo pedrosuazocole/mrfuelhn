@@ -640,6 +640,9 @@ async function migrarAV2() {
       if (e.message && e.message.includes('CHECK constraint failed')) {
         console.log('  ⚠️  Constraint antiguo detectado, migrando tabla usuarios...');
 
+        // Desactivar FOREIGN KEYS para poder recrear la tabla
+        await runAsync(`PRAGMA foreign_keys = OFF`);
+
         // Eliminar tabla temporal si quedó de un intento anterior
         await runAsync(`DROP TABLE IF EXISTS usuarios_new`);
 
@@ -664,6 +667,9 @@ async function migrarAV2() {
         // 3. Eliminar tabla vieja y renombrar la nueva
         await runAsync(`DROP TABLE usuarios`);
         await runAsync(`ALTER TABLE usuarios_new RENAME TO usuarios`);
+
+        // Reactivar FOREIGN KEYS
+        await runAsync(`PRAGMA foreign_keys = ON`);
 
         console.log('  ✅ Tabla usuarios migrada con rol tecnico');
       } else {
