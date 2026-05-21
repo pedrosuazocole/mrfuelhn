@@ -630,12 +630,9 @@ async function migrarAV2() {
 
     // ===================================
     // MIGRACIÓN: Agregar rol 'tecnico'
-    // SQLite no permite ALTER TABLE para cambiar CHECK constraints
-    // Se recrea la tabla preservando todos los datos existentes
     // ===================================
     console.log('\n🔧 Verificando rol tecnico en tabla usuarios...');
     try {
-      // Intentar insertar un usuario temporal con rol tecnico para detectar si el constraint es viejo
       await runAsync(`INSERT INTO usuarios (nombre, email, password, rol) VALUES ('__test__', '__test__@test.com', 'x', 'tecnico')`);
       await runAsync(`DELETE FROM usuarios WHERE email = '__test__@test.com'`);
       console.log('  ✅ Rol tecnico ya soportado, no se necesita migración');
@@ -643,9 +640,12 @@ async function migrarAV2() {
       if (e.message && e.message.includes('CHECK constraint failed')) {
         console.log('  ⚠️  Constraint antiguo detectado, migrando tabla usuarios...');
 
-        // 1. Crear tabla temporal con el constraint correcto
+        // Eliminar tabla temporal si quedó de un intento anterior
+        await runAsync(`DROP TABLE IF EXISTS usuarios_new`);
+
+        // 1. Crear tabla nueva con constraint correcto
         await runAsync(`
-          CREATE TABLE IF NOT EXISTS usuarios_new (
+          CREATE TABLE usuarios_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
@@ -667,7 +667,7 @@ async function migrarAV2() {
 
         console.log('  ✅ Tabla usuarios migrada con rol tecnico');
       } else {
-        console.log('  ⚠️  Error inesperado:', e.message);
+        console.log('  ⚠️  Error inesperado en verificación de rol:', e.message);
       }
     }
 
