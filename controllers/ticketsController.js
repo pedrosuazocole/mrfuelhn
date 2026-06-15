@@ -4,6 +4,7 @@
  */
 
 const { getAsync, allAsync, runAsync } = require('../config/database');
+const { notificarTicket } = require('../utils/textmebot');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -197,6 +198,20 @@ exports.crearTicket = async (req, res) => {
         mensaje: 'Ticket creado exitosamente',
         whatsappUrl
       });
+
+      // ── CallmeBot: notificación automática al crear ticket ──────────────
+      try {
+        const ticketObj  = await getAsync('SELECT * FROM tickets WHERE id = ?', [ticketId]);
+        const estObj     = await getAsync('SELECT * FROM estaciones WHERE id = ?', [ticketObj.estacion_id]).catch(()=>null);
+        const asignadoObj= ticketObj.asignado_a
+                         ? await getAsync('SELECT * FROM usuarios WHERE id = ?', [ticketObj.asignado_a]).catch(()=>null)
+                         : null;
+        const creadorObj = await getAsync('SELECT * FROM usuarios WHERE id = ?', [req.session.userId]).catch(()=>null);
+        notificarTicket(ticketObj, estObj, asignadoObj, creadorObj, 'creado')
+          .catch(err => console.error('⚠️  TextMeBot ticket creado:', err.message));
+      } catch (cbErr) {
+        console.error('⚠️  TextMeBot prep ticket:', cbErr.message);
+      }
             
     } catch (error) {
       console.error('Error:', error);
@@ -319,6 +334,19 @@ exports.reasignarTicket = async (req, res) => {
     }
     
     res.json({ success: true, mensaje: 'Ticket reasignado', whatsappUrl });
+
+    // ── CallmeBot: notificación automática al reasignar ticket ────────────
+    try {
+      const ticketObj   = await getAsync('SELECT * FROM tickets WHERE id = ?', [id]);
+      const estObj      = await getAsync('SELECT * FROM estaciones WHERE id = ?', [ticketObj.estacion_id]).catch(()=>null);
+      const asignadoObj = ticketObj.asignado_a
+                        ? await getAsync('SELECT * FROM usuarios WHERE id = ?', [ticketObj.asignado_a]).catch(()=>null)
+                        : null;
+      notificarTicket(ticketObj, estObj, asignadoObj, null, 'reasignado')
+        .catch(err => console.error('⚠️  TextMeBot ticket reasignado:', err.message));
+    } catch (cbErr) {
+      console.error('⚠️  TextMeBot prep reasignación:', cbErr.message);
+    }
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ success: false, mensaje: 'Error al reasignar' });

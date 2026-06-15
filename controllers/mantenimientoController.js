@@ -3,6 +3,7 @@
  */
 
 const { getAsync, allAsync, runAsync } = require('../config/database');
+const { notificarMantenimiento } = require('../utils/textmebot');
 const path = require('path');
 const fs = require('fs');
 
@@ -166,6 +167,32 @@ exports.crearMantenimiento = async (req, res) => {
 
     res.json({ success: true, mantenimientoId, mensaje: 'Mantenimiento creado exitosamente', whatsappUrls });
 
+    // ── CallmeBot: notificación automática (después de responder al cliente) ──
+    try {
+      const mantCompleto  = await getAsync('SELECT * FROM mantenimientos WHERE id = ?', [mantenimientoId]);
+      const estacionObj   = await getAsync('SELECT * FROM estaciones WHERE id = ?', [estacion_id]);
+      const tecnicoObj    = await getAsync('SELECT * FROM usuarios WHERE id = ?', [tecnico_id]);
+      const categoriaObj  = await getAsync('SELECT * FROM mantenimiento_categorias WHERE id = ?', [categoria_id]);
+      const evalCompletas = await allAsync(`
+        SELECT me.*, mi.nombre AS item_nombre
+        FROM mantenimiento_evaluaciones me
+        INNER JOIN mantenimiento_items mi ON me.item_id = mi.id
+        WHERE me.mantenimiento_id = ? ORDER BY mi.orden
+      `, [mantenimientoId]);
+      const fotosCompletas = await allAsync(`
+        SELECT mf.*, mi.nombre AS item_nombre
+        FROM mantenimiento_fotos mf
+        INNER JOIN mantenimiento_evaluaciones me ON mf.evaluacion_id = me.id
+        INNER JOIN mantenimiento_items mi ON me.item_id = mi.id
+        WHERE me.mantenimiento_id = ? ORDER BY mi.orden, mf.orden
+      `, [mantenimientoId]);
+
+      notificarMantenimiento(mantCompleto, estacionObj, tecnicoObj, categoriaObj, evalCompletas, fotosCompletas)
+        .catch(err => console.error('⚠️  TextMeBot mantenimiento:', err.message));
+    } catch (cbErr) {
+      console.error('⚠️  TextMeBot prep mantenimiento:', cbErr.message);
+    }
+
   } catch (error) {
     console.error('Error crearMantenimiento:', error);
     res.status(500).json({ success: false, mensaje: 'Error al crear mantenimiento' });
@@ -220,7 +247,7 @@ exports.verDetalle = async (req, res) => {
   }
 };
 
-// ─── GENERAR PDF ─────────────────────────────────────────────────────────────
+// ─── GENERAR PDF (HTML imprimible) ───────────────────────────────────────────
 exports.generarPDF = async (req, res) => {
   try {
     const { id } = req.params;
@@ -257,6 +284,22 @@ exports.generarPDF = async (req, res) => {
     res.render('mantenimiento/pdf', { mant, evaluaciones });
   } catch (error) {
     console.error('Error generarPDF mantenimiento:', error);
+    res.status(500).send('Error al generar PDF');
+  }
+};
+
+// ─── DESCARGA PDF BINARIO REAL (para TextMeBot) ──────────────────────────────
+exports.descargarPDFBinario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { generarPDFBinarioMantenimiento } = require('../utils/pdfBinario');
+    const buffer = await generarPDFBinarioMantenimiento(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="mantenimiento-${id}.pdf"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (error) {
+    console.error('Error PDF binario mantenimiento:', error);
     res.status(500).send('Error al generar PDF');
   }
 };

@@ -40,6 +40,9 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
+// ── Ruta PÚBLICA — PDF para TextMeBot (sin autenticación) ──
+router.get('/:id/pdf-download', ctrl.descargarPDFBinario);
+
 // Todos los autenticados pueden ver y crear mantenimientos
 router.use(isAuthenticated);
 
@@ -55,7 +58,7 @@ router.post('/nuevo', (req, res, next) => {
   });
 }, ctrl.crearMantenimiento);
 
-router.get('/:id/pdf',      ctrl.generarPDF);
+router.get('/:id/pdf',          ctrl.generarPDF);
 router.get('/:id',          ctrl.verDetalle);
 router.delete('/:id',       isAdmin, ctrl.eliminarMantenimiento);
 

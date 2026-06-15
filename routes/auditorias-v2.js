@@ -8,7 +8,11 @@ const auditoriaV2Controller = require('../controllers/auditoriaV2Controller');
 const { isAuthenticated, isAdmin, hasRole } = require('../middleware/auth');
 const upload = require('../config/multer');
 
-// Todas las rutas requieren autenticación y rol no-técnico
+// ── Rutas PÚBLICAS (sin autenticación — para TextMeBot y descarga directa) ──
+// IMPORTANTE: deben ir ANTES de router.use(isAuthenticated)
+router.get('/:id/pdf-download', auditoriaV2Controller.descargarPDFBinario);
+
+// Todas las demás rutas requieren autenticación y rol no-técnico
 router.use(isAuthenticated);
 router.use(hasRole('admin', 'supervisor', 'auditor'));
 
@@ -43,6 +47,9 @@ router.get('/:id/pdf', auditoriaV2Controller.generarPDF);
 
 // Obtener números WhatsApp activos para una auditoría
 router.get('/:id/whatsapp-numeros', auditoriaV2Controller.obtenerNumerosWhatsApp);
+
+// Enviar auditoría por WhatsApp vía TextMeBot (botón manual)
+router.post('/:id/enviar-whatsapp', auditoriaV2Controller.enviarWhatsAppTextMeBot);
 
 // Eliminar (solo admin)
 router.delete('/:id', isAdmin, auditoriaV2Controller.eliminarAuditoria);

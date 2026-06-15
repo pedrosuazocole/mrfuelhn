@@ -40,6 +40,7 @@
               <th>Nombre</th>
               <th>Número</th>
               <th>Cargo</th>
+              <th>CallmeBot</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -54,13 +55,24 @@
               </td>
               <td><%= num.cargo || '-' %></td>
               <td>
+                <% if (num.textmebot_apikey && num.textmebot_apikey.trim()) { %>
+                  <span class="badge badge-success" title="API Key configurada — notificaciones automáticas activas">
+                    <i class="fas fa-check-circle"></i> Activo
+                  </span>
+                <% } else { %>
+                  <span class="badge badge-secondary" title="Sin API Key — las notificaciones automáticas no funcionarán para este número">
+                    <i class="fas fa-times-circle"></i> Sin API Key
+                  </span>
+                <% } %>
+              </td>
+              <td>
                 <span class="badge <%= num.activo ? 'badge-success' : 'badge-danger' %>">
                   <%= num.activo ? 'Activo' : 'Inactivo' %>
                 </span>
               </td>
               <td>
                 <button class="btn btn-sm btn-secondary" title="Editar" 
-                        onclick="editarNumero(<%= num.id %>, '<%= num.nombre %>', '<%= num.numero %>', '<%= num.cargo || '' %>')">
+                        onclick="editarNumero(<%= num.id %>, '<%= num.nombre %>', '<%= num.numero %>', '<%= num.cargo || '' %>', '<%= num.textmebot_apikey || '' %>')">
                   <i class="fas fa-edit"></i>
                 </button>
                 <button class="btn btn-sm <%= num.activo ? 'btn-warning' : 'btn-success' %>" 
@@ -109,6 +121,17 @@
           <label>Cargo</label>
           <input type="text" name="cargo" class="form-control" placeholder="Ej: Supervisor">
         </div>
+
+        <div class="form-group">
+          <label><i class="fab fa-whatsapp" style="color:#25D366;"></i> TextMeBot API Key</label>
+          <input type="text" name="textmebot_apikey" class="form-control" placeholder="Ej: 1234567">
+          <small class="form-text" style="line-height:1.5;">
+            <strong>Para activar notificaciones automáticas:</strong><br>
+            1. Registrá el número en <strong>textmebot.com</strong><br>
+            2. Registrarte en <strong>textmebot.com</strong> con ese número.<br>
+            3. Recibirás tu API Key — ingrésala aquí (Pedro ya tiene la suya).
+          </small>
+        </div>
         
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-nuevo-numero')">Cancelar</button>
@@ -140,6 +163,17 @@
         <div class="form-group">
           <label>Cargo</label>
           <input type="text" id="edit-cargo" name="cargo" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label><i class="fab fa-whatsapp" style="color:#25D366;"></i> TextMeBot API Key</label>
+          <input type="text" id="edit-apikey" name="textmebot_apikey" class="form-control" placeholder="Ej: 1234567">
+          <small class="form-text" style="line-height:1.5;">
+            <strong>Para activar notificaciones automáticas:</strong><br>
+            1. Registrá el número en <strong>textmebot.com</strong><br>
+            2. Registrarte en <strong>textmebot.com</strong> con ese número.<br>
+            3. Recibirás tu API Key — ingrésala aquí (Pedro ya tiene la suya).
+          </small>
         </div>
         
         <div class="modal-footer">
@@ -174,10 +208,11 @@
   });
   
   // Editar número
-  function editarNumero(id, nombre, numero, cargo) {
-    document.getElementById('edit-nombre').value = nombre;
-    document.getElementById('edit-numero').value = numero;
-    document.getElementById('edit-cargo').value = cargo || '';
+  function editarNumero(id, nombre, numero, cargo, apikey) {
+    document.getElementById('edit-nombre').value  = nombre;
+    document.getElementById('edit-numero').value  = numero;
+    document.getElementById('edit-cargo').value   = cargo  || '';
+    document.getElementById('edit-apikey').value  = apikey || '';
     document.getElementById('form-editar-numero').action = `/admin/whatsapp/${id}/editar`;
     document.getElementById('modal-editar-numero').style.display = 'flex';
   }

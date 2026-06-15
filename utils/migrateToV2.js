@@ -245,11 +245,26 @@ async function migrarAV2() {
         nombre TEXT NOT NULL,
         numero TEXT NOT NULL,
         cargo TEXT,
+        textmebot_apikey TEXT,
         activo INTEGER DEFAULT 1,
         fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✅ Tabla whatsapp_numeros creada');
+
+    // Migrar columna callmebot_apikey si no existe (bases de datos existentes)
+    try {
+      await runAsync(`ALTER TABLE whatsapp_numeros ADD COLUMN textmebot_apikey TEXT`);
+      // Migrar datos de callmebot_apikey a textmebot_apikey si existe
+      try {
+        await runAsync(`UPDATE whatsapp_numeros SET textmebot_apikey = callmebot_apikey WHERE callmebot_apikey IS NOT NULL`);
+        console.log('✅ Datos migrados de callmebot_apikey a textmebot_apikey');
+      } catch(e) { /* callmebot_apikey puede no existir */ }
+      console.log('✅ Columna textmebot_apikey agregada a whatsapp_numeros');
+    } catch (e) {
+      // Columna ya existe — normal en deploys posteriores
+      console.log('  ℹ️  textmebot_apikey ya existe en whatsapp_numeros');
+    }
 
     // Insertar números por defecto
     await runAsync(`

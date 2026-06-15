@@ -243,3 +243,21 @@ document.addEventListener('click', async (e) => {
     }
   }
 });
+
+// ── Dropdown Configuración ───────────────────────────────────────────────────
+function toggleDropdown(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  const li = el.closest('.nav-dropdown');
+  const isOpen = li.classList.contains('open');
+  // Cerrar otros dropdowns abiertos
+  document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) li.classList.add('open');
+}
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});

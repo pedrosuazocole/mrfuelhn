@@ -47,7 +47,7 @@
             <tr>
               <td><strong>#<%= aud.id %></strong></td>
               <td><%= aud.estacion_nombre %></td>
-              <td><%= new Date(aud.fecha_visita).toLocaleDateString('es-HN') %></td>
+              <td><%= aud.fecha_visita ? aud.fecha_visita.split('T')[0].split('-').reverse().join('/') : '' %></td>
               <td><%= aud.auditor_nombre %></td>
               <td>
                 <span class="badge <%= aud.calificacion_general >= 80 ? 'badge-success' : aud.calificacion_general >= 60 ? 'badge-warning' : 'badge-danger' %>">

@@ -31,16 +31,12 @@ exports.listarNumeros = async (req, res) => {
  */
 exports.agregarNumero = async (req, res) => {
   try {
-    const { nombre, numero, cargo } = req.body;
-    
-    // Limpiar número (quitar espacios, guiones, etc)
+    const { nombre, numero, cargo, textmebot_apikey } = req.body;
     const numeroLimpio = numero.replace(/[^0-9+]/g, '');
-    
     await runAsync(
-      'INSERT INTO whatsapp_numeros (nombre, numero, cargo) VALUES (?, ?, ?)',
-      [nombre, numeroLimpio, cargo || null]
+      'INSERT INTO whatsapp_numeros (nombre, numero, cargo, textmebot_apikey) VALUES (?, ?, ?, ?)',
+      [nombre, numeroLimpio, cargo || null, textmebot_apikey?.trim() || null]
     );
-    
     res.redirect('/admin/whatsapp');
   } catch (error) {
     console.error('Error:', error);
@@ -54,15 +50,12 @@ exports.agregarNumero = async (req, res) => {
 exports.editarNumero = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, numero, cargo } = req.body;
-    
+    const { nombre, numero, cargo, textmebot_apikey } = req.body;
     const numeroLimpio = numero.replace(/[^0-9+]/g, '');
-    
     await runAsync(
-      'UPDATE whatsapp_numeros SET nombre = ?, numero = ?, cargo = ? WHERE id = ?',
-      [nombre, numeroLimpio, cargo || null, id]
+      'UPDATE whatsapp_numeros SET nombre = ?, numero = ?, cargo = ?, textmebot_apikey = ? WHERE id = ?',
+      [nombre, numeroLimpio, cargo || null, textmebot_apikey?.trim() || null, id]
     );
-    
     res.redirect('/admin/whatsapp');
   } catch (error) {
     console.error('Error:', error);

@@ -5,6 +5,7 @@
 
 const { getAsync, allAsync, runAsync, db } = require('../config/database');
 const { enviarNotificacionAuditoriaV2 } = require('../utils/email');
+const { notificarAuditoria } = require('../utils/textmebot');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -294,6 +295,12 @@ exports.crearAuditoria = async (req, res) => {
         .then(() => console.log('✅ Email enviado'))
         .catch(err => console.error('⚠️  Error al enviar notificación:', err.message));
     }
+
+    // ── CallmeBot: notificación automática WhatsApp ──────────────────────
+    if (auditoria && estacion && auditor) {
+      notificarAuditoria(auditoria, estacion, auditor, evaluacionesCompletas, todasLasFotos)
+        .catch(err => console.error('⚠️  TextMeBot auditoría:', err.message));
+    }
     
     console.log(`✅ Auditoría v2 creada: ID ${auditoriaId} - ${estacion ? estacion.nombre : 'N/A'} (${calificacionGeneral}%)`);
     
@@ -518,17 +525,106 @@ exports.obtenerNumerosWhatsApp = async (req, res) => {
     const numeros = await allAsync(
       'SELECT id, nombre, numero, cargo FROM whatsapp_numeros WHERE activo = 1 ORDER BY nombre ASC'
     );
-    
-    res.json({
-      success: true,
-      numeros
-    });
+    res.json({ success: true, numeros });
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({
-      success: false,
-      mensaje: 'Error al obtener números de WhatsApp'
+    res.status(500).json({ success: false, mensaje: 'Error al obtener números de WhatsApp' });
+  }
+};
+
+/**
+ * Descargar PDF binario real de una auditoría
+ * GET /auditorias-v2/:id/pdf-download
+ */
+exports.descargarPDFBinario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { generarPDFBinarioAuditoria } = require('../utils/pdfBinario');
+    const buffer = await generarPDFBinarioAuditoria(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="auditoria-${id}.pdf"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (error) {
+    console.error('Error descargarPDFBinario:', error);
+    res.status(500).send('Error al generar PDF');
+  }
+};
+
+/**
+ * Enviar auditoría por WhatsApp vía TextMeBot (botón manual desde detalle)
+ * POST /auditorias-v2/:id/enviar-whatsapp
+ */
+exports.enviarWhatsAppTextMeBot = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notificarAuditoria } = require('../utils/textmebot');
+
+    // Obtener auditoría completa
+    const auditoria = await getAsync(`
+      SELECT a.*,
+             e.nombre  AS estacion_nombre,
+             e.codigo  AS estacion_codigo,
+             u.nombre  AS auditor_nombre
+      FROM auditorias_v2 a
+      INNER JOIN estaciones e ON a.estacion_id = e.id
+      INNER JOIN usuarios   u ON a.auditor_id  = u.id
+      WHERE a.id = ?
+    `, [id]);
+
+    if (!auditoria) return res.status(404).json({ success: false, mensaje: 'Auditoría no encontrada' });
+
+    const estacion    = await getAsync('SELECT * FROM estaciones WHERE id = ?', [auditoria.estacion_id]);
+    const auditor     = await getAsync('SELECT * FROM usuarios   WHERE id = ?', [auditoria.auditor_id]);
+
+    // Evaluaciones
+    const evaluaciones = await allAsync(`
+      SELECT e.*, i.nombre AS item_nombre, c.nombre AS categoria_nombre
+      FROM evaluaciones_items e
+      JOIN items_auditoria i ON e.item_id      = i.id
+      JOIN categorias      c ON i.categoria_id = c.id
+      WHERE e.auditoria_id = ?
+      ORDER BY c.orden, i.orden
+    `, [id]);
+
+    // Fotos
+    const fotos = await allAsync(`
+      SELECT f.*, i.nombre AS item_nombre, c.nombre AS categoria_nombre
+      FROM fotos_items f
+      JOIN evaluaciones_items e ON f.evaluacion_id  = e.id
+      JOIN items_auditoria    i ON e.item_id         = i.id
+      JOIN categorias         c ON i.categoria_id    = c.id
+      WHERE e.auditoria_id = ?
+      ORDER BY c.orden, i.orden, f.orden
+    `, [id]);
+
+    // Verificar que haya destinatarios con API Key
+    const { allAsync: allDB } = require('../config/database');
+    const destinatarios = await allAsync(
+      `SELECT nombre FROM whatsapp_numeros
+       WHERE activo = 1 AND textmebot_apikey IS NOT NULL AND textmebot_apikey != ''`
+    );
+
+    if (!destinatarios.length) {
+      return res.status(400).json({
+        success: false,
+        mensaje: 'No hay números con API Key de TextMeBot configurada. Ve a Configuración → WhatsApp.'
+      });
+    }
+
+    // Lanzar envío en background y responder inmediatamente
+    res.json({
+      success: true,
+      mensaje: `Enviando a ${destinatarios.length} número(s) por TextMeBot...`
     });
+
+    // Envío asíncrono después de responder al cliente
+    notificarAuditoria(auditoria, estacion, auditor, evaluaciones, fotos)
+      .catch(err => console.error('❌ TextMeBot envío manual auditoría:', err.message));
+
+  } catch (error) {
+    console.error('Error enviarWhatsAppTextMeBot:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al enviar por WhatsApp' });
   }
 };
 

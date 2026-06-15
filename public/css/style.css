@@ -175,6 +175,58 @@ body {
   color: white;
 }
 
+/* ── Dropdown Configuración ─────────────────── */
+.nav-dropdown { position: relative; }
+
+.nav-dropdown-toggle { cursor: pointer; }
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  background: #1a1a1a;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+  z-index: 9999;
+  padding: 6px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.nav-dropdown-menu li { padding: 0; }
+
+.nav-dropdown-menu a {
+  display: block;
+  padding: 10px 18px;
+  font-size: 14px;
+  color: #ddd !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  white-space: nowrap;
+}
+
+.nav-dropdown-menu a:hover,
+.nav-dropdown-menu a.active {
+  background: var(--texaco-red) !important;
+  color: white !important;
+}
+
+.nav-dropdown.open .nav-dropdown-menu { display: block; }
+
+/* Móvil: dropdown ocupa todo el ancho */
+@media (max-width: 768px) {
+  .nav-dropdown-menu {
+    position: static;
+    box-shadow: none;
+    background: rgba(255,255,255,0.05);
+    border-radius: 0;
+    padding: 0 0 0 16px;
+  }
+  .nav-dropdown.open .nav-dropdown-menu { display: block; }
+}
+
 .navbar-user {
   display: flex;
   align-items: center;
