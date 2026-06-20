@@ -85,6 +85,9 @@
         <a href="/mantenimiento/<%= mant.id %>/pdf" target="_blank" class="btn btn-primary">
           <i class="fas fa-file-pdf"></i> Ver PDF
         </a>
+        <button class="btn btn-success" onclick="enviarWA()">
+          <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
+        </button>
         <% if (user.userRole === 'admin') { %>
         <button class="btn btn-danger" onclick="eliminar(<%= mant.id %>)">
           <i class="fas fa-trash"></i> Eliminar
@@ -181,6 +184,31 @@
       </div>
     </div>
     <% } %>
+
+  <!-- Firmas -->
+  <% if (mant.responsable_nombre || mant.supervisor_nombre || mant.responsable_firma || mant.supervisor_firma) { %>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header">✍️ Firmas</div>
+    <div style="padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:24px; flex-wrap:wrap;">
+      <div>
+        <strong style="color:#555;">Responsable de Mantenimiento</strong>
+        <p style="margin:4px 0 8px;"><%= mant.responsable_nombre || '—' %></p>
+        <% if (mant.responsable_firma) { %>
+        <img src="<%= mant.responsable_firma %>" alt="Firma responsable"
+             style="border:1px solid #ddd;border-radius:6px;max-width:100%;height:100px;object-fit:contain;background:#fff;">
+        <% } %>
+      </div>
+      <div>
+        <strong style="color:#555;">Supervisor</strong>
+        <p style="margin:4px 0 8px;"><%= mant.supervisor_nombre || '—' %></p>
+        <% if (mant.supervisor_firma) { %>
+        <img src="<%= mant.supervisor_firma %>" alt="Firma supervisor"
+             style="border:1px solid #ddd;border-radius:6px;max-width:100%;height:100px;object-fit:contain;background:#fff;">
+        <% } %>
+      </div>
+    </div>
+  </div>
+  <% } %>
   </main>
 
   <%- include('../partials/footer') %>
@@ -189,11 +217,25 @@
     async function eliminar(id) {
       if (!confirm('¿Eliminar este mantenimiento?\nEsta acción no se puede deshacer.')) return;
       try {
-        const resp = await fetch(`/mantenimiento/${id}`, { method: 'DELETE' });
-        const data = await resp.json();
-        if (data.success) { alert('✅ Eliminado'); window.location.href = '/mantenimiento'; }
-        else alert('❌ ' + data.mensaje);
-      } catch (e) { alert('❌ Error al eliminar'); }
+        const r = await fetch(`/mantenimiento/${id}`, {method:'DELETE'});
+        const d = await r.json();
+        if (d.success) { alert('✅ Eliminado'); window.location.href='/mantenimiento'; }
+        else alert('❌ '+d.mensaje);
+      } catch(e) { alert('❌ Error al eliminar'); }
+    }
+    async function enviarWA() {
+      const btn = document.querySelector('button[onclick="enviarWA()"]');
+      const orig = btn.innerHTML;
+      if (!confirm('¿Enviar este mantenimiento por WhatsApp?\n\nSe enviará:\n• Resumen con calificación\n• PDF adjunto\n• Fotos de evidencia')) return;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+      try {
+        const r = await fetch('/mantenimiento/<%= mant.id %>/enviar-whatsapp', {method:'POST'});
+        const d = await r.json();
+        if (d.success) alert('✅ '+d.mensaje+'\n\nEl PDF y las fotos llegarán en segundos.');
+        else alert('❌ '+d.mensaje);
+      } catch(e) { alert('❌ Error de conexión'); }
+      finally { btn.disabled=false; btn.innerHTML=orig; }
     }
   </script>
 </body>

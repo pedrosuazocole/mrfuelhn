@@ -2,18 +2,14 @@
  * TEXTMEBOT — NOTIFICACIONES AUTOMÁTICAS WhatsApp
  * MR. FUEL v2.0 — Metric Solutions & POS
  *
- * Documentación oficial: https://textmebot.com
- *
- * ENDPOINTS GET (más simples y confiables):
- *  Texto:     GET ?recipient=PHONE&apikey=KEY&text=MSG
- *  Imagen:    GET ?recipient=PHONE&apikey=KEY&text=MSG&file=URL_IMAGEN
- *  Documento: GET ?recipient=PHONE&apikey=KEY&document=URL_PDF&filename=nombre.pdf&text=caption
+ * Formato de URL adoptado del módulo de WhatsApp de MetricPOS (probado y funcional):
+ *  - recipient usa el signo + codificado: %2B{numero}
+ *  - document/file NO se codifican con encodeURIComponent (TextMeBot los necesita en texto plano)
+ *  - &json=yes para obtener respuesta estructurada
+ *  - delay de 5s entre mensajes (más conservador, evita rate-limit de TextMeBot)
  */
 
 const https  = require('https');
-const http   = require('http');
-const path   = require('path');
-const fs     = require('fs');
 const { allAsync } = require('../config/database');
 
 const BASE = 'https://api.textmebot.com/send.php';
@@ -24,49 +20,27 @@ const APP_URL = (() => {
   return 'https://fuelhn.up.railway.app';
 })();
 
-// ── Leer imagen del disco, convertir a JPEG base64 ────────────────────────
-async function imagenAJpegBase64(ruta) {
-  try {
-    const sharp = require('sharp');
-    // Resolver ruta absoluta en el volumen
-    const uploadsBase = process.env.UPLOADS_BASE_PATH
-                     || (process.env.RAILWAY_VOLUME_MOUNT_PATH
-                         ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
-                         : path.join(__dirname, '..', 'public', 'uploads'));
-    // ruta en BD: /uploads/auditorias/foto.jpg → quitar /uploads/
-    const relativa = ruta.replace(/^\/uploads\//, '');
-    const rutaAbs  = path.join(uploadsBase, relativa);
+const wait = ms => new Promise(r => setTimeout(r, ms));
 
-    if (!fs.existsSync(rutaAbs)) {
-      console.warn(`⚠️  Foto no encontrada: ${rutaAbs}`);
-      return null;
-    }
+// ── Limpiar número (solo dígitos) ──────────────────────────────────────────
+function phone(n) { return String(n).replace(/[^0-9]/g, ''); }
 
-    // Convertir a JPEG (resuelve WEBP, PNG, HEIC, etc.)
-    const jpegBuf = await sharp(rutaAbs)
-      .rotate()                  // corregir orientación EXIF
-      .resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-
-    return jpegBuf.toString('base64');
-  } catch (e) {
-    console.error('⚠️  Error convirtiendo imagen:', e.message);
-    return null;
-  }
+// ── URL pública de foto/archivo ────────────────────────────────────────────
+function urlArchivo(ruta) {
+  if (!ruta) return null;
+  if (ruta.startsWith('http')) return ruta;
+  const r = ruta.startsWith('/') ? ruta : `/${ruta}`;
+  return `${APP_URL}${r}`;
 }
 
-// ── Enviar imagen como base64 JPEG ────────────────────────────────────────
-async function enviarImagenBase64(numero, apikey, caption, base64jpeg) {
-  return get(`${BASE}?recipient=${phone(numero)}&apikey=${apikey.trim()}&text=${encodeURIComponent(caption)}&file=${encodeURIComponent('data:image/jpeg;base64,' + base64jpeg)}`);
-}
+// ── GET a la API de TextMeBot ───────────────────────────────────────────────
 function get(url) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: 25000 }, (res) => {
+    const req = https.get(url, { timeout: 30000 }, (res) => {
       let body = '';
       res.on('data', c => body += c);
       res.on('end',  () => {
-        console.log(`   → HTTP ${res.statusCode}: ${body.slice(0, 120)}`);
+        console.log(`   → HTTP ${res.statusCode}: ${body.slice(0, 150)}`);
         resolve({ status: res.statusCode, body });
       });
     });
@@ -75,20 +49,26 @@ function get(url) {
   });
 }
 
-// ── Limpiar número ─────────────────────────────────────────────────────────
-function phone(n) { return String(n).replace(/[^0-9]/g, ''); }
-
-// ── URL pública de foto ────────────────────────────────────────────────────
-function urlFoto(ruta) {
-  if (!ruta) return null;
-  if (ruta.startsWith('http')) return ruta;
-  const r = ruta.startsWith('/') ? ruta : `/${ruta}`;
-  return `${APP_URL}${r}`;
+/**
+ * Enviar vía TextMeBot — mismo patrón que MetricPOS.
+ * Para texto:    solo `mensaje`
+ * Para PDF/foto: `pdfUrl` (NO codificada) + `pdfNombre` + `mensaje` opcional como caption
+ */
+async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre }) {
+  const tel = phone(numero);
+  let url;
+  if (pdfUrl) {
+    // IMPORTANTE: pdfUrl va en texto plano, sin encodeURIComponent
+    url = `${BASE}?recipient=%2B${tel}&apikey=${apikey.trim()}&document=${pdfUrl}&filename=${encodeURIComponent(pdfNombre || 'Reporte.pdf')}&json=yes`;
+    if (mensaje) url += `&text=${encodeURIComponent(mensaje)}`;
+  } else {
+    url = `${BASE}?recipient=%2B${tel}&apikey=${apikey.trim()}&text=${encodeURIComponent(mensaje)}&json=yes`;
+  }
+  const r = await get(url);
+  try { return JSON.parse(r.body); } catch (e) { return { status: r.body }; }
 }
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
-
-// ── Obtener destinatarios con API Key ──────────────────────────────────────
+// ── Obtener destinatarios con API Key configurada ─────────────────────────
 async function destinatarios() {
   const rows = await allAsync(
     `SELECT nombre, numero, textmebot_apikey
@@ -102,98 +82,55 @@ async function destinatarios() {
   return rows;
 }
 
-// ── Enviar texto ───────────────────────────────────────────────────────────
-async function enviarTexto(numero, apikey, texto) {
-  const url = `${BASE}?recipient=${phone(numero)}&apikey=${apikey.trim()}&text=${encodeURIComponent(texto)}`;
-  return get(url);
-}
-
-// ── Enviar imagen (GET con &file=URL) ──────────────────────────────────────
-async function enviarImagen(numero, apikey, caption, imgUrl) {
-  const url = `${BASE}?recipient=${phone(numero)}&apikey=${apikey.trim()}&text=${encodeURIComponent(caption)}&file=${encodeURIComponent(imgUrl)}`;
-  return get(url);
-}
-
-// ── Enviar documento PDF (GET con &document=URL) ───────────────────────────
-async function enviarDocumento(numero, apikey, caption, docUrl, filename) {
-  let url = `${BASE}?recipient=${phone(numero)}&apikey=${apikey.trim()}&document=${encodeURIComponent(docUrl)}`;
-  if (caption)  url += `&text=${encodeURIComponent(caption)}`;
-  if (filename) url += `&filename=${encodeURIComponent(filename)}`;
-  return get(url);
-}
-
 // ── A todos: texto ─────────────────────────────────────────────────────────
-async function textoATodos(msg) {
+async function textoATodos(mensaje) {
+  const dests = await destinatarios();
+  if (!dests.length) { console.log('⚠️  Sin destinatarios con API Key'); return []; }
+  const res = [];
+  for (const d of dests) {
+    try {
+      console.log(`📤 Texto → ${d.nombre}`);
+      const r = await _textmebotEnviar({ numero: d.numero, apikey: d.textmebot_apikey, mensaje });
+      res.push({ nombre: d.nombre, ok: true, r });
+    } catch (e) {
+      console.error(`❌ Texto ${d.nombre}: ${e.message}`);
+      res.push({ nombre: d.nombre, ok: false, error: e.message });
+    }
+    await wait(5000);
+  }
+  return res;
+}
+
+// ── A todos: documento (PDF o imagen — TextMeBot detecta el tipo por la URL) ──
+async function documentoATodos(caption, fileUrl, filename) {
   const dests = await destinatarios();
   if (!dests.length) return [];
   const res = [];
   for (const d of dests) {
     try {
-      console.log(`📤 Texto → ${d.nombre}`);
-      const r = await enviarTexto(d.numero, d.textmebot_apikey, msg);
-      res.push({ nombre: d.nombre, ok: r.status === 200 });
+      console.log(`📤 Archivo → ${d.nombre}: ${fileUrl}`);
+      const r = await _textmebotEnviar({
+        numero:    d.numero,
+        apikey:    d.textmebot_apikey,
+        pdfUrl:    fileUrl,
+        pdfNombre: filename,
+        mensaje:   caption
+      });
+      res.push({ nombre: d.nombre, ok: true, r });
     } catch (e) {
-      console.error(`❌ Texto ${d.nombre}: ${e.message}`);
-      res.push({ nombre: d.nombre, ok: false });
+      console.error(`❌ Archivo ${d.nombre}: ${e.message}`);
+      res.push({ nombre: d.nombre, ok: false, error: e.message });
     }
-    await wait(2000);
+    await wait(5000);
   }
   return res;
 }
 
-// ── A todos: imagen (convierte a JPEG primero) ────────────────────────────
+// Alias para mantener compatibilidad con el resto del código existente
 async function imagenATodos(caption, rutaOUrl) {
-  const dests = await destinatarios();
-  const res = [];
-
-  // Convertir a JPEG base64 UNA SOLA VEZ para todos los destinatarios
-  let base64 = null;
-  if (rutaOUrl && !rutaOUrl.startsWith('http')) {
-    // Es ruta local — convertir a JPEG
-    base64 = await imagenAJpegBase64(rutaOUrl);
-    if (!base64) {
-      console.warn('⚠️  Imagen omitida — no se pudo convertir');
-      return [];
-    }
-  }
-
-  for (const d of dests) {
-    try {
-      console.log(`📤 Imagen → ${d.nombre}`);
-      let r;
-      if (base64) {
-        // Enviar como base64 JPEG — sin problemas de formato
-        r = await get(`${BASE}?recipient=${phone(d.numero)}&apikey=${d.textmebot_apikey.trim()}&text=${encodeURIComponent(caption)}&file=${encodeURIComponent('data:image/jpeg;base64,' + base64)}`);
-      } else {
-        // URL pública (fotos de tickets que ya tienen URL)
-        r = await enviarImagen(d.numero, d.textmebot_apikey, caption, rutaOUrl);
-      }
-      res.push({ nombre: d.nombre, ok: r.status === 200 });
-    } catch (e) {
-      console.error(`❌ Imagen ${d.nombre}: ${e.message}`);
-      res.push({ nombre: d.nombre, ok: false });
-    }
-    await wait(2000);
-  }
-  return res;
-}
-
-// ── A todos: documento PDF ─────────────────────────────────────────────────
-async function documentoATodos(caption, docUrl, filename) {
-  const dests = await destinatarios();
-  const res = [];
-  for (const d of dests) {
-    try {
-      console.log(`📤 PDF → ${d.nombre}: ${docUrl}`);
-      const r = await enviarDocumento(d.numero, d.textmebot_apikey, caption, docUrl, filename);
-      res.push({ nombre: d.nombre, ok: r.status === 200 });
-    } catch (e) {
-      console.error(`❌ PDF ${d.nombre}: ${e.message}`);
-      res.push({ nombre: d.nombre, ok: false });
-    }
-    await wait(2000);
-  }
-  return res;
+  const url = urlArchivo(rutaOUrl);
+  if (!url) { console.warn('⚠️  Imagen sin URL válida, omitida'); return []; }
+  return documentoATodos(caption, url, 'Foto.jpg');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -223,27 +160,14 @@ async function notificarAuditoria(auditoria, estacion, auditor, evaluaciones, fo
     // 1) Texto
     console.log('📱 [Auditoría] Enviando resumen de texto...');
     await textoATodos(msg);
-    await wait(3000);
+    await wait(5000);
 
-    // 2) PDF — URL pública que devuelve PDF binario real
+    // 2) PDF — incluye las fotos embebidas dentro del documento
     const pdfUrl  = `${APP_URL}/auditorias-v2/${auditoria.id}/pdf-download`;
     const pdfName = `Auditoria-${auditoria.id}.pdf`;
-    console.log(`📱 [Auditoría] Enviando PDF: ${pdfUrl}`);
+    console.log(`📱 [Auditoría] Enviando PDF (con fotos incluidas): ${pdfUrl}`);
     await documentoATodos(`📄 Reporte #${auditoria.id} — ${estacion.nombre} — ${fecha}`, pdfUrl, pdfName);
-    await wait(3000);
 
-    // 3) Fotos de evidencia (máx 5)
-    if (fotos && fotos.length) {
-      for (let i = 0; i < Math.min(fotos.length, 5); i++) {
-        // Pasar la ruta local (/uploads/auditorias/foto.jpg) para convertir a JPEG
-        const ruta = fotos[i].ruta_archivo || fotos[i].ruta;
-        if (!ruta) continue;
-        const cap = `📸 ${i+1}/${Math.min(fotos.length,5)}: ${fotos[i].item_nombre || fotos[i].categoria_nombre || ''}`;
-        console.log(`📱 [Auditoría] Foto ${i+1}: ${ruta}`);
-        await imagenATodos(cap, ruta);
-        await wait(3000);
-      }
-    }
     console.log(`✅ Auditoría #${auditoria.id} notificada`);
   } catch (e) { console.error('❌ notificarAuditoria:', e.message); }
 }
@@ -274,11 +198,11 @@ async function notificarTicket(ticket, estacion, asignado, creador, accion = 'cr
     await textoATodos(msg);
 
     if (ticket.foto_evidencia) {
-      await wait(3000);
-      const imgUrl = urlFoto(ticket.foto_evidencia);
-      if (imgUrl) {
-        console.log(`📱 [Ticket] Foto: ${imgUrl}`);
-        await imagenATodos(`📸 Evidencia Ticket #${ticket.id}`, imgUrl);
+      await wait(5000);
+      const url = urlArchivo(ticket.foto_evidencia);
+      if (url) {
+        console.log(`📱 [Ticket] Foto: ${url}`);
+        await documentoATodos(`📸 Evidencia Ticket #${ticket.id}`, url, `Ticket_${ticket.id}.jpg`);
       }
     }
     console.log(`✅ Ticket #${ticket.id} notificado`);
@@ -312,23 +236,14 @@ async function notificarMantenimiento(mant, estacion, tecnico, categoria, evalua
 
     console.log('📱 [Mantenimiento] Enviando texto...');
     await textoATodos(msg);
-    await wait(3000);
+    await wait(5000);
 
+    // PDF — incluye las fotos embebidas dentro del documento
     const pdfUrl  = `${APP_URL}/mantenimiento/${mant.id}/pdf-download`;
     const pdfName = `Mantenimiento-${mant.id}.pdf`;
-    console.log(`📱 [Mantenimiento] Enviando PDF: ${pdfUrl}`);
+    console.log(`📱 [Mantenimiento] Enviando PDF (con fotos incluidas): ${pdfUrl}`);
     await documentoATodos(`📄 Reporte #${mant.id} — ${categoria?.nombre||''} — ${fecha}`, pdfUrl, pdfName);
-    await wait(3000);
 
-    if (fotos && fotos.length) {
-      for (let i = 0; i < Math.min(fotos.length, 4); i++) {
-        const ruta = fotos[i].ruta_archivo || fotos[i].ruta;
-        if (!ruta) continue;
-        console.log(`📱 [Mantenimiento] Foto ${i+1}: ${ruta}`);
-        await imagenATodos(`📸 ${i+1}/${Math.min(fotos.length,4)}: ${fotos[i].item_nombre||''}`, ruta);
-        await wait(3000);
-      }
-    }
     console.log(`✅ Mantenimiento #${mant.id} notificado`);
   } catch (e) { console.error('❌ notificarMantenimiento:', e.message); }
 }

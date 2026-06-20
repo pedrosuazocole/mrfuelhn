@@ -13,7 +13,7 @@
     </button>
     
     <ul class="navbar-menu" id="navbarMenu">
-      <% if (user.userRole !== 'tecnico') { %>
+      <% if (user.userRole !== 'tecnico' && user.userRole !== 'supervisor_pista' && user.userRole !== 'responsable_mantenimiento') { %>
       <li><a href="/dashboard" class="<%= currentPath === '/dashboard' ? 'active' : '' %>">
         <i class="fas fa-home"></i> Dashboard
       </a></li>
@@ -23,7 +23,7 @@
         <i class="fas fa-tools"></i> Mantenimiento
       </a></li>
 
-      <% if (user.userRole !== 'tecnico') { %>
+      <% if (user.userRole !== 'tecnico' && user.userRole !== 'supervisor_pista' && user.userRole !== 'responsable_mantenimiento') { %>
       <li><a href="/auditorias-v2" class="<%= currentPath.startsWith('/auditorias') ? 'active' : '' %>">
         <i class="fas fa-clipboard-check"></i> Auditorías v2.0
       </a></li>

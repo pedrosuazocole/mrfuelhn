@@ -46,6 +46,9 @@ router.get('/:id/pdf-download', ctrl.descargarPDFBinario);
 // Todos los autenticados pueden ver y crear mantenimientos
 router.use(isAuthenticated);
 
+// ── Enviar mantenimiento por WhatsApp (TextMeBot) ──────────────────────────
+router.post('/:id/enviar-whatsapp', ctrl.enviarWhatsAppMantenimiento);
+
 // ── Operaciones principales ──────────────────────────────────────────────────
 router.get('/',       ctrl.listarMantenimientos);
 router.get('/nuevo',  ctrl.mostrarFormularioNuevo);

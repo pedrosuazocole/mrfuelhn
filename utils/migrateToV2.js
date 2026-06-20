@@ -23,7 +23,7 @@ async function migrarAV2() {
         nombre TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor', 'tecnico')),
+        rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor', 'tecnico', 'supervisor_pista', 'responsable_mantenimiento')),
         telefono TEXT,
         activo INTEGER DEFAULT 1,
         fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -643,6 +643,256 @@ async function migrarAV2() {
       console.log('  ℹ️  Categoría Aire Acondicionado ya existe, omitiendo');
     }
 
+    // ── Nueva categoría: Generador-Compresor de Aire Semanal ──────────────
+    const gcNombre = 'Mantenimiento Generador-Compresor de Aire Semanal';
+    const gcExist  = await getAsync(
+      "SELECT id FROM mantenimiento_categorias WHERE nombre = ?", [gcNombre]
+    );
+    if (!gcExist) {
+      await runAsync(
+        'INSERT INTO mantenimiento_categorias (nombre, descripcion, orden) VALUES (?, ?, ?)',
+        [gcNombre, 'Mantenimiento semanal de generador y compresor de aire', 2]
+      );
+      const gcId = (await getAsync("SELECT id FROM mantenimiento_categorias WHERE nombre = ?", [gcNombre])).id;
+
+      const itemsGC = [
+        // Generador
+        { nombre: 'Prueba de Operación — Generador bajo carga (mín. 20 min)',  descripcion: 'Enciende el generador bajo carga y verifica que funcione correctamente durante al menos 20 minutos', max_fotos: 5 },
+        { nombre: 'Prueba de Operación — Ruidos y vibraciones anormales',       descripcion: 'Escucha ruidos inusuales y observa posibles vibraciones anormales',                                    max_fotos: 5 },
+        { nombre: 'Filtro de Aire — Inspección y limpieza',                     descripcion: 'Inspecciona el filtro de aire y límpialo si está sucio',                                                max_fotos: 5 },
+        { nombre: 'Mangueras y Conexiones — Refrigerante y combustible',        descripcion: 'Inspecciona mangueras y conexiones de refrigerante y combustible para detectar fugas o desgaste',      max_fotos: 5 },
+        // Compresor de Aire
+        { nombre: 'Drenaje del Tanque de Aire',                                 descripcion: 'Drena el agua acumulada en el tanque para evitar corrosión interna. Hacerlo con el compresor apagado y despresurizado', max_fotos: 5 },
+        { nombre: 'Revisión de Mangueras y Conexiones — Compresor',            descripcion: 'Inspecciona mangueras y conexiones en busca de desgaste, grietas o fugas. Reemplaza componentes si es necesario', max_fotos: 5 },
+        { nombre: 'Pruebas de Seguridad — Válvulas y manómetro',               descripcion: 'Verifica que las válvulas de seguridad y el manómetro estén funcionando correctamente',              max_fotos: 5 },
+      ];
+
+      for (let i = 0; i < itemsGC.length; i++) {
+        await runAsync(
+          'INSERT INTO mantenimiento_items (categoria_id, nombre, descripcion, orden, max_fotos) VALUES (?, ?, ?, ?, ?)',
+          [gcId, itemsGC[i].nombre, itemsGC[i].descripcion, i + 1, itemsGC[i].max_fotos]
+        );
+      }
+      console.log(`✅ Categoría "${gcNombre}" creada con ${itemsGC.length} ítems`);
+    } else {
+      console.log(`  ℹ️  Categoría "${gcNombre}" ya existe, omitiendo`);
+    }
+
+    // ── Nueva categoría: Extintores-Tanque de Agua Bimestral ──────────────
+    const etNombre = 'Mantenimiento Extintores-Tanque de Agua Bimestral';
+    const etExist  = await getAsync(
+      'SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [etNombre]
+    );
+    if (!etExist) {
+      await runAsync(
+        'INSERT INTO mantenimiento_categorias (nombre, descripcion, orden) VALUES (?, ?, ?)',
+        [etNombre, 'Mantenimiento bimestral de extintores y tanque de presión de agua', 3]
+      );
+      const etId = (await getAsync('SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [etNombre])).id;
+
+      const itemsET = [
+        // ── Extintores ────────────────────────────────────────────────────
+        { nombre: 'Extintor Bomba 1 — Estado (Bueno/Malo)',                     desc: 'Verificar estado del extintor Bomba 1' },
+        { nombre: 'Extintor Bomba 2 — Estado (Bueno/Malo)',                     desc: 'Verificar estado del extintor Bomba 2' },
+        { nombre: 'Extintor Bomba 3 — Estado (Bueno/Malo)',                     desc: 'Verificar estado del extintor Bomba 3' },
+        { nombre: 'Extintor Bomba 4 — Estado (Bueno/Malo)',                     desc: 'Verificar estado del extintor Bomba 4' },
+        { nombre: 'Extintor Bomba 5 — Estado (Bueno/Malo)',                     desc: 'Verificar estado del extintor Bomba 5' },
+        { nombre: 'Extintor Bomba 6 — Estado (Bueno/Malo)',                     desc: 'Verificar estado del extintor Bomba 6' },
+        { nombre: 'Extintor Cuarto de Máquinas — Estado (Bueno/Malo)',          desc: 'Verificar estado del extintor del Cuarto de Máquinas' },
+        { nombre: 'Extintor Pasillo Oficina — Estado (Bueno/Malo)',             desc: 'Verificar estado del extintor del Pasillo Oficina' },
+        { nombre: 'Extintor Cocina — Estado (Bueno/Malo)',                      desc: 'Verificar estado del extintor de Cocina' },
+        { nombre: 'Extintor Oficina Contabilidad — Estado (Bueno/Malo)',        desc: 'Verificar estado del extintor de Oficina Contabilidad' },
+        { nombre: 'Extintor Bodega de Vencidos — Estado (Bueno/Malo)',          desc: 'Verificar estado del extintor de Bodega de Vencidos' },
+        { nombre: 'Fecha de Vencimiento de Extintores',                         desc: 'Registrar fechas de vencimiento de todos los extintores (Bombas 1-6, Cuarto de Máquinas, Pasillo Oficina, Cocina, Oficina Contabilidad, Bodega de Vencidos)' },
+        // ── Tanque de Presión de Agua ─────────────────────────────────────
+        { nombre: 'Verificación de Presión Interna — Medición con manómetro',  desc: 'Usa un manómetro para medir la presión del aire dentro del tanque' },
+        { nombre: 'Verificación de Presión Interna — Ajuste de presión',       desc: 'Ajusta la presión si es necesario (generalmente 2-4 PSI por debajo del ajuste del interruptor de la bomba)' },
+        { nombre: 'Inspección de Válvulas — Entrada y salida',                 desc: 'Verifica que las válvulas de entrada y salida funcionen correctamente' },
+        { nombre: 'Inspección de Conexiones — Sin obstrucciones ni desgaste',  desc: 'Asegúrate de que las conexiones no estén obstruidas ni desgastadas' },
+        { nombre: 'Limpieza Externa del Tanque y área circundante',            desc: 'Limpia el tanque y el área circundante para evitar acumulación de polvo, suciedad o residuos' },
+        { nombre: 'Calibración del Sistema — Bomba e interruptor de presión',  desc: 'Asegúrate de que la bomba y el interruptor de presión estén ajustados según las necesidades del sistema' },
+        // ── Generador Bimestral ───────────────────────────────────────────
+        { nombre: 'Generador — Inspección General (alternador, correas, ventiladores)', desc: 'Revisa el estado del alternador, correas, ventiladores y el sistema de enfriamiento' },
+        { nombre: 'Generador — Prueba de Batería (voltaje y carga)',           desc: 'Mide el voltaje y carga de la batería. Sustituye si los niveles están fuera de rango' },
+        { nombre: 'Generador — Revisión del Sistema de Combustible',           desc: 'Comprueba el tanque de combustible, líneas y filtros en busca de obstrucciones o contaminantes' },
+        { nombre: 'Generador — Drenaje del Agua del Tanque de Combustible',   desc: 'Elimina cualquier acumulación de agua o sedimentos en el tanque de combustible' },
+      ];
+
+      for (let i = 0; i < itemsET.length; i++) {
+        await runAsync(
+          'INSERT INTO mantenimiento_items (categoria_id, nombre, descripcion, orden, max_fotos) VALUES (?, ?, ?, ?, ?)',
+          [etId, itemsET[i].nombre, itemsET[i].desc, i + 1, 5]
+        );
+      }
+      console.log(`✅ Categoría "${etNombre}" creada con ${itemsET.length} ítems`);
+    } else {
+      console.log(`  ℹ️  Categoría "${etNombre}" ya existe, omitiendo`);
+    }
+
+    // ── Nueva categoría: Mangueras-Dispensador-Trampa Trimestral ─────────
+    const mdtNombre = 'Mantenimiento Mangueras-Dispensador-Trampa Trimestral';
+    const mdtExist  = await getAsync(
+      'SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [mdtNombre]
+    );
+    if (!mdtExist) {
+      await runAsync(
+        'INSERT INTO mantenimiento_categorias (nombre, descripcion, orden) VALUES (?, ?, ?)',
+        [mdtNombre, 'Mantenimiento trimestral de mangueras, dispensadores, generador y trampa de grasa', 4]
+      );
+      const mdtId = (await getAsync('SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [mdtNombre])).id;
+
+      const itemsMDT = [
+        // ── Mangueras ─────────────────────────────────────────────────────
+        { nombre: 'Manguera Bomba 1 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 1' },
+        { nombre: 'Manguera Bomba 2 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 2' },
+        { nombre: 'Manguera Bomba 3 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 3' },
+        { nombre: 'Manguera Bomba 4 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 4' },
+        { nombre: 'Manguera Bomba 5 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 5' },
+        { nombre: 'Manguera Bomba 6 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 6' },
+        { nombre: 'Manguera Bomba 7 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la manguera del Dispensador Bomba 7' },
+        // ── Boquillas ─────────────────────────────────────────────────────
+        { nombre: 'Boquilla Bomba 1 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 1' },
+        { nombre: 'Boquilla Bomba 2 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 2' },
+        { nombre: 'Boquilla Bomba 3 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 3' },
+        { nombre: 'Boquilla Bomba 4 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 4' },
+        { nombre: 'Boquilla Bomba 5 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 5' },
+        { nombre: 'Boquilla Bomba 6 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 6' },
+        { nombre: 'Boquilla Bomba 7 — Estado (Bueno/Malo)',           desc: 'Verificar estado de la boquilla del Dispensador Bomba 7' },
+        // ── Calibración del Dispensador ───────────────────────────────────
+        { nombre: 'Calibración Dispensador — Resultado Bomba 1',      desc: 'Resultado de calibración del dispensador Bomba 1 (cada 3 meses)' },
+        { nombre: 'Calibración Dispensador — Resultado Bomba 2',      desc: 'Resultado de calibración del dispensador Bomba 2' },
+        { nombre: 'Calibración Dispensador — Resultado Bomba 3',      desc: 'Resultado de calibración del dispensador Bomba 3' },
+        { nombre: 'Calibración Dispensador — Resultado Bomba 4',      desc: 'Resultado de calibración del dispensador Bomba 4' },
+        { nombre: 'Calibración Dispensador — Resultado Bomba 5',      desc: 'Resultado de calibración del dispensador Bomba 5' },
+        { nombre: 'Calibración Dispensador — Resultado Bomba 6',      desc: 'Resultado de calibración del dispensador Bomba 6' },
+        { nombre: 'Calibración Dispensador — Resultado Bomba 7',      desc: 'Resultado de calibración del dispensador Bomba 7' },
+        // ── Generador Trimestral ──────────────────────────────────────────
+        { nombre: 'Generador — Sistema de Refrigeración',             desc: 'Revisa y limpia el radiador, verifica el nivel y la calidad del refrigerante' },
+        { nombre: 'Generador — Sistema Eléctrico',                    desc: 'Inspecciona cables, conexiones y terminales en busca de desgaste o corrosión' },
+        { nombre: 'Generador — Prueba de Carga Completa',             desc: 'Opera el generador a su capacidad máxima para asegurarte de que puede soportar la carga' },
+        // ── Trampa de Grasa ───────────────────────────────────────────────
+        { nombre: 'Trampa de Grasa — Retiro de grasas y residuos sólidos',          desc: 'Retirar grasas y residuos sólidos acumulados en la trampa' },
+        { nombre: 'Trampa de Grasa — Limpieza interna (paredes y fondo)',            desc: 'Limpiar paredes y fondo internos de la trampa de grasa' },
+        { nombre: 'Trampa de Grasa — Revisión de tuberías de entrada y salida',     desc: 'Revisar el estado de las tuberías de entrada y salida' },
+        { nombre: 'Trampa de Grasa — Inspección de filtros y rejillas',             desc: 'Inspeccionar el estado de filtros y rejillas de la trampa' },
+        { nombre: 'Trampa de Grasa — Tratamiento enzimático (si aplica)',           desc: 'Aplicar tratamiento enzimático si es necesario según condiciones' },
+      ];
+
+      for (let i = 0; i < itemsMDT.length; i++) {
+        await runAsync(
+          'INSERT INTO mantenimiento_items (categoria_id, nombre, descripcion, orden, max_fotos) VALUES (?, ?, ?, ?, ?)',
+          [mdtId, itemsMDT[i].nombre, itemsMDT[i].desc, i + 1, 5]
+        );
+      }
+      console.log(`✅ Categoría "${mdtNombre}" creada con ${itemsMDT.length} ítems`);
+    } else {
+      console.log(`  ℹ️  Categoría "${mdtNombre}" ya existe, omitiendo`);
+    }
+
+    // ── Nueva categoría: Filtros de Combustible Semestral ─────────────────
+    const fcsNombre = 'Mantenimiento Filtros de Combustible Semestral';
+    const fcsExist  = await getAsync(
+      'SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [fcsNombre]
+    );
+    if (!fcsExist) {
+      await runAsync(
+        'INSERT INTO mantenimiento_categorias (nombre, descripcion, orden) VALUES (?, ?, ?)',
+        [fcsNombre, 'Mantenimiento semestral de filtros, sensores, pantallas y cisterna', 5]
+      );
+      const fcsId = (await getAsync('SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [fcsNombre])).id;
+
+      const itemsFCS = [
+        // ── Filtros de Combustible ─────────────────────────────────────────
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 1',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 1 (cada 6 meses)' },
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 2',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 2' },
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 3',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 3' },
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 4',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 4' },
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 5',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 5' },
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 6',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 6' },
+        { nombre: 'Filtro de Combustible — Tipo y estado Bomba 7',    desc: 'Inspección y registro del tipo de filtro de combustible del Dispensador Bomba 7' },
+        // ── Sensores ──────────────────────────────────────────────────────
+        { nombre: 'Sensor Dispensador Bomba 1 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 1 (cada 6 meses)' },
+        { nombre: 'Sensor Dispensador Bomba 2 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 2' },
+        { nombre: 'Sensor Dispensador Bomba 3 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 3' },
+        { nombre: 'Sensor Dispensador Bomba 4 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 4' },
+        { nombre: 'Sensor Dispensador Bomba 5 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 5' },
+        { nombre: 'Sensor Dispensador Bomba 6 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 6' },
+        { nombre: 'Sensor Dispensador Bomba 7 — Estado (Bueno/Malo)', desc: 'Verificar estado del sensor del Dispensador Bomba 7' },
+        // ── Pantallas ─────────────────────────────────────────────────────
+        { nombre: 'Pantalla Dispensador Bomba 1 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 1 (cada 6 meses)' },
+        { nombre: 'Pantalla Dispensador Bomba 2 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 2' },
+        { nombre: 'Pantalla Dispensador Bomba 3 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 3' },
+        { nombre: 'Pantalla Dispensador Bomba 4 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 4' },
+        { nombre: 'Pantalla Dispensador Bomba 5 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 5' },
+        { nombre: 'Pantalla Dispensador Bomba 6 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 6' },
+        { nombre: 'Pantalla Dispensador Bomba 7 — Estado (Bueno/Malo)', desc: 'Verificar estado de la pantalla del Dispensador Bomba 7' },
+        // ── Limpieza de Cisterna de Agua ──────────────────────────────────
+        { nombre: 'Cisterna — Se cerró la válvula de entrada de agua',          desc: 'Verificar que se cerró correctamente la válvula de entrada antes de iniciar la limpieza' },
+        { nombre: 'Cisterna — Se vació completamente la cisterna',              desc: 'Confirmar que la cisterna fue vaciada completamente' },
+        { nombre: 'Cisterna — Se retiraron residuos sólidos',                  desc: 'Retirar todos los residuos sólidos acumulados en la cisterna' },
+        { nombre: 'Cisterna — Se limpiaron paredes y fondo',                   desc: 'Limpieza completa de paredes internas y fondo de la cisterna' },
+        { nombre: 'Cisterna — Se aplicó desinfectante (cloro, etc.)',          desc: 'Aplicar desinfectante (cloro u otro) en toda la superficie interna' },
+        { nombre: 'Cisterna — Se realizó enjuague con agua limpia',            desc: 'Enjuagar completamente la cisterna con agua potable limpia' },
+        { nombre: 'Cisterna — Se inspeccionó estado de la cisterna',           desc: 'Inspeccionar el estado general de la cisterna (grietas, desgaste, etc.)' },
+        { nombre: 'Cisterna — Se revisaron válvulas y tuberías',               desc: 'Revisar el estado y funcionamiento de válvulas y tuberías conectadas a la cisterna' },
+        { nombre: 'Cisterna — Se llenó la cisterna con agua potable',          desc: 'Llenar la cisterna con agua potable tras completar la limpieza' },
+        { nombre: 'Cisterna — Se verificó el correcto funcionamiento',         desc: 'Verificar el correcto funcionamiento del sistema tras el llenado' },
+      ];
+
+      for (let i = 0; i < itemsFCS.length; i++) {
+        await runAsync(
+          'INSERT INTO mantenimiento_items (categoria_id, nombre, descripcion, orden, max_fotos) VALUES (?, ?, ?, ?, ?)',
+          [fcsId, itemsFCS[i].nombre, itemsFCS[i].desc, i + 1, 5]
+        );
+      }
+      console.log(`✅ Categoría "${fcsNombre}" creada con ${itemsFCS.length} ítems`);
+    } else {
+      console.log(`  ℹ️  Categoría "${fcsNombre}" ya existe, omitiendo`);
+    }
+
+    // ── Migrar tabla mantenimientos: agregar columnas de firma si no existen ──
+    for (const col of [
+      "ADD COLUMN responsable_nombre TEXT",
+      "ADD COLUMN responsable_firma  TEXT",
+      "ADD COLUMN supervisor_nombre  TEXT",
+      "ADD COLUMN supervisor_firma   TEXT",
+    ]) {
+      try { await runAsync(`ALTER TABLE mantenimientos ${col}`); }
+      catch(e) { /* columna ya existe */ }
+    }
+    console.log('✅ Columnas de firma en mantenimientos verificadas');
+
+    // ── Migrar roles: agregar supervisor_pista y responsable_mantenimiento ──
+    try {
+      await runAsync(`INSERT INTO usuarios (nombre, email, password, rol) VALUES ('__test_sp__','__sp__@t.com','x','supervisor_pista')`);
+      await runAsync(`DELETE FROM usuarios WHERE email = '__sp__@t.com'`);
+      console.log('✅ Roles nuevos ya soportados');
+    } catch(e) {
+      if (e.message && e.message.includes('CHECK constraint failed')) {
+        console.log('⚠️  Constraint sin nuevos roles — migrando tabla usuarios...');
+        await runAsync('PRAGMA foreign_keys = OFF');
+        await runAsync('DROP TABLE IF EXISTS usuarios_new');
+        await runAsync(`
+          CREATE TABLE usuarios_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            rol TEXT NOT NULL CHECK(rol IN ('admin','supervisor','auditor','tecnico','supervisor_pista','responsable_mantenimiento')),
+            telefono TEXT,
+            activo INTEGER DEFAULT 1,
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ultimo_acceso DATETIME
+          )
+        `);
+        await runAsync(`INSERT INTO usuarios_new SELECT * FROM usuarios`);
+        await runAsync(`DROP TABLE usuarios`);
+        await runAsync(`ALTER TABLE usuarios_new RENAME TO usuarios`);
+        await runAsync('PRAGMA foreign_keys = ON');
+        console.log('✅ Tabla usuarios migrada con roles supervisor_pista y responsable_mantenimiento');
+      }
+    }
+
     // ===================================
     // MIGRACIÓN: Agregar rol 'tecnico'
     // ===================================
@@ -668,7 +918,7 @@ async function migrarAV2() {
             nombre TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor', 'tecnico')),
+            rol TEXT NOT NULL CHECK(rol IN ('admin', 'supervisor', 'auditor', 'tecnico', 'supervisor_pista', 'responsable_mantenimiento')),
             telefono TEXT,
             activo INTEGER DEFAULT 1,
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,

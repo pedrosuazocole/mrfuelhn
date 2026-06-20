@@ -84,7 +84,8 @@ exports.mostrarFormularioNuevo = async (req, res) => {
 exports.crearMantenimiento = async (req, res) => {
   try {
     const { estacion_id, categoria_id, fecha_visita, hora_visita,
-            evaluaciones: evalJSON, observaciones_generales, recomendaciones } = req.body;
+            evaluaciones: evalJSON, observaciones_generales, recomendaciones,
+            responsable_nombre, responsable_firma, supervisor_nombre, supervisor_firma } = req.body;
 
     if (!estacion_id || !categoria_id || !fecha_visita || !hora_visita) {
       return res.status(400).json({ success: false, mensaje: 'Faltan datos obligatorios' });
@@ -102,10 +103,13 @@ exports.crearMantenimiento = async (req, res) => {
     const resultado = await runAsync(`
       INSERT INTO mantenimientos
         (estacion_id, tecnico_id, categoria_id, fecha_visita, hora_visita,
-         calificacion_general, observaciones_generales, recomendaciones)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         calificacion_general, observaciones_generales, recomendaciones,
+         responsable_nombre, responsable_firma, supervisor_nombre, supervisor_firma)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [estacion_id, tecnico_id, categoria_id, fecha_visita, hora_visita,
-        calificacion, observaciones_generales || null, recomendaciones || null]);
+        calificacion, observaciones_generales || null, recomendaciones || null,
+        responsable_nombre || null, responsable_firma || null,
+        supervisor_nombre  || null, supervisor_firma  || null]);
 
     const mantenimientoId = resultado.lastID;
 
@@ -285,6 +289,62 @@ exports.generarPDF = async (req, res) => {
   } catch (error) {
     console.error('Error generarPDF mantenimiento:', error);
     res.status(500).send('Error al generar PDF');
+  }
+};
+
+// ─── ENVIAR POR WHATSAPP (TextMeBot) ────────────────────────────────────────
+exports.enviarWhatsAppMantenimiento = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notificarMantenimiento } = require('../utils/textmebot');
+
+    const mant = await getAsync(`
+      SELECT m.*, e.nombre AS estacion_nombre, u.nombre AS tecnico_nombre,
+             mc.nombre AS categoria_nombre
+      FROM mantenimientos m
+      INNER JOIN estaciones e ON m.estacion_id = e.id
+      INNER JOIN usuarios u   ON m.tecnico_id  = u.id
+      INNER JOIN mantenimiento_categorias mc ON m.categoria_id = mc.id
+      WHERE m.id = ?
+    `, [id]);
+    if (!mant) return res.status(404).json({ success: false, mensaje: 'Mantenimiento no encontrado' });
+
+    const estacion  = await getAsync('SELECT * FROM estaciones WHERE id = ?', [mant.estacion_id]);
+    const tecnico   = await getAsync('SELECT * FROM usuarios WHERE id = ?',   [mant.tecnico_id]);
+    const categoria = await getAsync('SELECT * FROM mantenimiento_categorias WHERE id = ?', [mant.categoria_id]);
+
+    const evaluaciones = await allAsync(`
+      SELECT me.*, mi.nombre AS item_nombre
+      FROM mantenimiento_evaluaciones me
+      INNER JOIN mantenimiento_items mi ON me.item_id = mi.id
+      WHERE me.mantenimiento_id = ? ORDER BY mi.orden
+    `, [id]);
+
+    const fotos = await allAsync(`
+      SELECT mf.*, mi.nombre AS item_nombre
+      FROM mantenimiento_fotos mf
+      INNER JOIN mantenimiento_evaluaciones me ON mf.evaluacion_id = me.id
+      INNER JOIN mantenimiento_items mi ON me.item_id = mi.id
+      WHERE me.mantenimiento_id = ? ORDER BY mi.orden, mf.orden
+    `, [id]);
+
+    const { allAsync: allDB } = require('../config/database');
+    const destinos = await allDB(
+      `SELECT nombre FROM whatsapp_numeros
+       WHERE activo=1 AND textmebot_apikey IS NOT NULL AND TRIM(textmebot_apikey)!=''`
+    );
+    if (!destinos.length) {
+      return res.status(400).json({ success: false, mensaje: 'No hay números con API Key de TextMeBot configurada.' });
+    }
+
+    res.json({ success: true, mensaje: `Enviando a ${destinos.length} número(s)...` });
+
+    notificarMantenimiento(mant, estacion, tecnico, categoria, evaluaciones, fotos)
+      .catch(err => console.error('❌ TextMeBot envío manual mantenimiento:', err.message));
+
+  } catch (error) {
+    console.error('Error enviarWhatsAppMantenimiento:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al enviar' });
   }
 };
 

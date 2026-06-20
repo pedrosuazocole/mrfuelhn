@@ -67,8 +67,8 @@ exports.procesarLogin = async (req, res) => {
     
     console.log(`✅ Login exitoso: ${usuario.nombre} (${usuario.rol})`);
     
-    // Técnicos van directamente a Mantenimiento
-    if (usuario.rol === 'tecnico') {
+    const rolesMantenimiento = ['tecnico', 'supervisor_pista', 'responsable_mantenimiento'];
+    if (rolesMantenimiento.includes(usuario.rol)) {
       res.redirect('/mantenimiento');
     } else {
       res.redirect('/dashboard');

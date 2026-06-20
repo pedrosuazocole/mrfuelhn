@@ -202,6 +202,50 @@
         <% }); %>
       </div>
 
+      <!-- Firmas -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">✍️ Firmas</div>
+        <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+
+          <!-- Firma Responsable de Mantenimiento -->
+          <div>
+            <div class="form-group">
+              <label><strong>Responsable de Mantenimiento</strong></label>
+              <input type="text" name="responsable_nombre" id="responsable_nombre"
+                     class="form-control" placeholder="Nombre completo">
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Firma</label>
+              <canvas id="canvas-responsable" style="border:1px solid #ccc; border-radius:6px; width:100%; height:130px; touch-action:none; cursor:crosshair;"></canvas>
+              <input type="hidden" name="responsable_firma" id="responsable_firma">
+              <button type="button" class="btn btn-sm btn-secondary" style="margin-top:6px;"
+                      onclick="limpiarCanvas('canvas-responsable','responsable_firma')">
+                <i class="fas fa-eraser"></i> Limpiar
+              </button>
+            </div>
+          </div>
+
+          <!-- Firma Supervisor -->
+          <div>
+            <div class="form-group">
+              <label><strong>Supervisor</strong></label>
+              <input type="text" name="supervisor_nombre" id="supervisor_nombre"
+                     class="form-control" placeholder="Nombre completo">
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Firma</label>
+              <canvas id="canvas-supervisor" style="border:1px solid #ccc; border-radius:6px; width:100%; height:130px; touch-action:none; cursor:crosshair;"></canvas>
+              <input type="hidden" name="supervisor_firma" id="supervisor_firma">
+              <button type="button" class="btn btn-sm btn-secondary" style="margin-top:6px;"
+                      onclick="limpiarCanvas('canvas-supervisor','supervisor_firma')">
+                <i class="fas fa-eraser"></i> Limpiar
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Observaciones generales -->
       <div class="card" style="margin-bottom: 20px;">
         <div class="card-header">Observaciones y Recomendaciones</div>
@@ -219,10 +263,13 @@
         </div>
       </div>
 
-      <!-- Botón guardar -->
-      <div style="text-align: center; margin-bottom: 30px;">
+      <!-- Botones -->
+      <div style="text-align: center; margin-bottom: 30px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
         <button type="submit" class="btn btn-primary btn-lg" id="btnGuardar">
           <i class="fas fa-save"></i> Guardar Mantenimiento
+        </button>
+        <button type="button" class="btn btn-success btn-lg" id="btnGuardarEnviar" style="display:none;">
+          <i class="fab fa-whatsapp"></i> Guardar y Enviar por WhatsApp
         </button>
       </div>
     </form>
@@ -315,57 +362,90 @@
       if (counter) counter.textContent = count;
     }
 
-    // ── Submit ───────────────────────────────────────────────────────────────
-    document.getElementById('formMantenimiento').addEventListener('submit', async e => {
-      e.preventDefault();
+    // ── Canvas de firmas ────────────────────────────────────────────────────
+    function initCanvas(canvasId, hiddenId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width  = rect.width  || 400;
+      canvas.height = rect.height || 130;
+      const ctx = canvas.getContext('2d');
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      let drawing = false;
+      function pos(e) {
+        const r = canvas.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return { x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height) };
+      }
+      function start(e){ e.preventDefault(); drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+      function move(e) { e.preventDefault(); if(!drawing)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); }
+      function end()   { drawing=false; document.getElementById(hiddenId).value=canvas.toDataURL(); }
+      canvas.addEventListener('mousedown',  start);
+      canvas.addEventListener('mousemove',  move);
+      canvas.addEventListener('mouseup',    end);
+      canvas.addEventListener('touchstart', start, {passive:false});
+      canvas.addEventListener('touchmove',  move,  {passive:false});
+      canvas.addEventListener('touchend',   end);
+    }
+    function limpiarCanvas(cId, hId) {
+      const c = document.getElementById(cId);
+      c.getContext('2d').clearRect(0,0,c.width,c.height);
+      document.getElementById(hId).value='';
+    }
+    window.addEventListener('load', () => {
+      initCanvas('canvas-responsable','responsable_firma');
+      initCanvas('canvas-supervisor', 'supervisor_firma');
+    });
 
+    // Mostrar botón WhatsApp al seleccionar categoría
+    document.getElementById('categoria_id').addEventListener('change', function() {
+      document.getElementById('btnGuardarEnviar').style.display =
+        this.value ? 'inline-flex' : 'none';
+    });
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+    async function submitMant(enviarWA) {
       const categoriaId = document.getElementById('categoria_id').value;
       if (!categoriaId) return alert('Selecciona una categoría');
-
-      // Recolectar evaluaciones del bloque activo
       const bloque = document.getElementById('cat-bloque-' + categoriaId);
       if (!bloque) return alert('Categoría no encontrada');
-
       const evaluaciones = [];
       bloque.querySelectorAll('[id^="cumple-"]').forEach(hidden => {
         const itemId = hidden.id.replace('cumple-', '');
         evaluaciones.push({
           item_id:     itemId,
           cumple:      hidden.value === '1',
-          observacion: (document.getElementById('obs-' + itemId) || {}).value || ''
+          observacion: (document.getElementById('obs-' + itemId)||{}).value || ''
         });
       });
-
-      if (evaluaciones.length === 0) return alert('No hay ítems para evaluar');
-
-      const btn = document.getElementById('btnGuardar');
+      if (!evaluaciones.length) return alert('No hay ítems para evaluar');
+      const btn = enviarWA
+        ? document.getElementById('btnGuardarEnviar')
+        : document.getElementById('btnGuardar');
+      const orig = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-
       try {
-        const formData = new FormData(e.target);
-        formData.set('evaluaciones', JSON.stringify(evaluaciones));
-
-        const resp   = await fetch('/mantenimiento/nuevo', { method: 'POST', body: formData });
+        const fd = new FormData(document.getElementById('formMantenimiento'));
+        fd.set('evaluaciones', JSON.stringify(evaluaciones));
+        const resp   = await fetch('/mantenimiento/nuevo', { method:'POST', body:fd });
         const result = await resp.json();
-
         if (result.success) {
-          // Abrir WhatsApp para cada número configurado
-          if (result.whatsappUrls && result.whatsappUrls.length > 0) {
-            result.whatsappUrls.forEach(item => window.open(item.url, '_blank'));
+          if (enviarWA && result.mantenimientoId) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando WhatsApp...';
+            try { await fetch(`/mantenimiento/${result.mantenimientoId}/enviar-whatsapp`, {method:'POST'}); }
+            catch(e) { console.error('WA error:',e); }
           }
-          alert('✅ Mantenimiento guardado exitosamente');
+          alert('✅ Mantenimiento guardado' + (enviarWA ? ' y enviado por WhatsApp' : ''));
           window.location.href = `/mantenimiento/${result.mantenimientoId}`;
-        } else {
-          throw new Error(result.mensaje || 'Error al guardar');
-        }
-      } catch (err) {
-        console.error(err);
+        } else { throw new Error(result.mensaje||'Error al guardar'); }
+      } catch(err) {
         alert('❌ ' + err.message);
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> Guardar Mantenimiento';
+        btn.disabled = false; btn.innerHTML = orig;
       }
-    });
+    }
+    document.getElementById('formMantenimiento').addEventListener('submit', e => { e.preventDefault(); submitMant(false); });
+    document.getElementById('btnGuardarEnviar').addEventListener('click', () => submitMant(true));
   </script>
 </body>
 </html>
