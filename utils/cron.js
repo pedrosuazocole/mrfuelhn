@@ -7,6 +7,11 @@ const cron = require('node-cron');
 const moment = require('moment-timezone');
 const { allAsync, runAsync } = require('../config/database');
 const { enviarRecordatorio } = require('./email');
+const {
+  enviarReporteAuditorias,
+  enviarReporteMantenimientos,
+  enviarReporteTickets,
+} = require('./reportesDiarios');
 
 // Configurar timezone
 moment.tz.setDefault(process.env.TZ || 'America/Tegucigalpa');
@@ -145,12 +150,61 @@ const reenviarRecordatoriosFallidos = () => {
 };
 
 /**
+ * Reporte diario de auditorías — todos los días a las 2:00 PM
+ */
+const programarReporteAuditorias = () => {
+  // minuto hora * * * → 0 14 * * *  (2:00 PM, todos los días)
+  cron.schedule('0 14 * * *', async () => {
+    console.log('\n⏰ [Cron] Enviando reporte diario de auditorías (2:00 PM)...');
+    try {
+      await enviarReporteAuditorias();
+    } catch (error) {
+      console.error('❌ Error en reporte diario de auditorías:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
+ * Reporte diario de mantenimientos — todos los días a las 5:00 PM
+ */
+const programarReporteMantenimientos = () => {
+  // 0 17 * * *  (5:00 PM, todos los días)
+  cron.schedule('0 17 * * *', async () => {
+    console.log('\n⏰ [Cron] Enviando reporte diario de mantenimientos (5:00 PM)...');
+    try {
+      await enviarReporteMantenimientos();
+    } catch (error) {
+      console.error('❌ Error en reporte diario de mantenimientos:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
+ * Reporte diario de tickets abiertos — todos los días a las 7:00 PM
+ */
+const programarReporteTickets = () => {
+  // 0 19 * * *  (7:00 PM, todos los días)
+  cron.schedule('0 19 * * *', async () => {
+    console.log('\n⏰ [Cron] Enviando reporte diario de tickets (7:00 PM)...');
+    try {
+      await enviarReporteTickets();
+    } catch (error) {
+      console.error('❌ Error en reporte diario de tickets:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
  * Iniciar todos los cron jobs
  */
 const iniciarCronJobs = () => {
   console.log('\n🚀 Iniciando sistema de recordatorios automáticos...\n');
   programarRecordatoriosSemanales();
   reenviarRecordatoriosFallidos();
+  programarReporteAuditorias();
+  programarReporteMantenimientos();
+  programarReporteTickets();
+  console.log('📅 Reportes diarios por WhatsApp programados: 2:00pm (auditorías), 5:00pm (mantenimiento), 7:00pm (tickets)');
   console.log('✅ Cron jobs activados\n');
 };
 

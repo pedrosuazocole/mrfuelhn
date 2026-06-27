@@ -7,6 +7,7 @@ const router = express.Router();
 const auditoriaV2Controller = require('../controllers/auditoriaV2Controller');
 const { isAuthenticated, isAdmin, hasRole } = require('../middleware/auth');
 const upload = require('../config/multer');
+const { comprimirFotosMiddleware } = require('../utils/comprimirFotos');
 
 // ── Rutas PÚBLICAS (sin autenticación — para TextMeBot y descarga directa) ──
 // IMPORTANTE: deben ir ANTES de router.use(isAuthenticated)
@@ -37,7 +38,7 @@ router.post('/nueva', (req, res, next) => {
     }
     next();
   });
-}, auditoriaV2Controller.crearAuditoria);
+}, comprimirFotosMiddleware, auditoriaV2Controller.crearAuditoria);
 
 // Ver detalle
 router.get('/:id', auditoriaV2Controller.verDetalle);

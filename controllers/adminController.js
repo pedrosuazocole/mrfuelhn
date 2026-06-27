@@ -224,4 +224,89 @@ exports.reordenarItems = async (req, res) => {
   }
 };
 
+/**
+ * Ejecutar limpieza del volumen: borra fotos huérfanas y comprime
+ * fotos viejas que no estén optimizadas. Devuelve el log completo
+ * como texto plano para verlo directamente en el navegador.
+ *
+ * GET /admin/limpiar-volumen  (solo admin)
+ */
+exports.limpiarVolumen = async (req, res) => {
+  try {
+    const { ejecutarLimpieza } = require('../utils/limpiezaVolumen');
+    const { resumen, log } = await ejecutarLimpieza();
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(log.join('\n') + '\n\n--- RESUMEN JSON ---\n' + JSON.stringify(resumen, null, 2));
+  } catch (error) {
+    console.error('Error en limpiarVolumen:', error);
+    res.status(500).send('❌ Error al ejecutar la limpieza: ' + error.message);
+  }
+};
+
+/**
+ * Verificar el espacio disponible/usado en el volumen de Railway.
+ * No modifica nada — solo lectura/diagnóstico.
+ *
+ * GET /admin/espacio-volumen  (solo admin)
+ */
+exports.espacioVolumen = async (req, res) => {
+  try {
+    const { verificarEspacio } = require('../utils/espacioVolumen');
+    const { resumenDf, log } = await verificarEspacio();
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(log.join('\n') + '\n\n--- RESUMEN JSON ---\n' + JSON.stringify(resumenDf, null, 2));
+  } catch (error) {
+    console.error('Error en espacioVolumen:', error);
+    res.status(500).send('❌ Error al verificar espacio: ' + error.message);
+  }
+};
+
+/**
+ * Envío manual del reporte diario de auditorías por WhatsApp.
+ * GET /admin/reporte/auditorias  (solo admin)
+ * Acepta ?fecha=YYYY-MM-DD opcional; por defecto usa el día de hoy.
+ */
+exports.enviarReporteAuditoriasManual = async (req, res) => {
+  try {
+    const { enviarReporteAuditorias } = require('../utils/reportesDiarios');
+    const { mensaje, resultado } = await enviarReporteAuditorias(req.query.fecha || null);
+    res.json({ success: true, mensaje_enviado: mensaje, destinatarios: resultado });
+  } catch (error) {
+    console.error('Error en enviarReporteAuditoriasManual:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al enviar el reporte: ' + error.message });
+  }
+};
+
+/**
+ * Envío manual del reporte diario de mantenimientos por WhatsApp.
+ * GET /admin/reporte/mantenimientos  (solo admin)
+ */
+exports.enviarReporteMantenimientosManual = async (req, res) => {
+  try {
+    const { enviarReporteMantenimientos } = require('../utils/reportesDiarios');
+    const { mensaje, resultado } = await enviarReporteMantenimientos(req.query.fecha || null);
+    res.json({ success: true, mensaje_enviado: mensaje, destinatarios: resultado });
+  } catch (error) {
+    console.error('Error en enviarReporteMantenimientosManual:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al enviar el reporte: ' + error.message });
+  }
+};
+
+/**
+ * Envío manual del reporte de tickets abiertos por WhatsApp.
+ * GET /admin/reporte/tickets  (solo admin)
+ */
+exports.enviarReporteTicketsManual = async (req, res) => {
+  try {
+    const { enviarReporteTickets } = require('../utils/reportesDiarios');
+    const { mensaje, resultado } = await enviarReporteTickets();
+    res.json({ success: true, mensaje_enviado: mensaje, destinatarios: resultado });
+  } catch (error) {
+    console.error('Error en enviarReporteTicketsManual:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al enviar el reporte: ' + error.message });
+  }
+};
+
 module.exports = exports;

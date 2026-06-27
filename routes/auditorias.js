@@ -7,6 +7,7 @@ const router = express.Router();
 const auditoriaController = require('../controllers/auditoriaController');
 const { isAuthenticated } = require('../middleware/auth');
 const upload = require('../config/multer');
+const { comprimirFotosMiddleware } = require('../utils/comprimirFotos');
 
 // Todas las rutas requieren autenticación
 router.use(isAuthenticated);
@@ -16,7 +17,7 @@ router.get('/', auditoriaController.listarAuditorias);
 
 // Nueva auditoría
 router.get('/nueva', auditoriaController.mostrarFormularioNueva);
-router.post('/nueva', upload.array('fotos', 10), auditoriaController.crearAuditoria);
+router.post('/nueva', upload.array('fotos', 10), comprimirFotosMiddleware, auditoriaController.crearAuditoria);
 
 // Ver detalle
 router.get('/:id', auditoriaController.verDetalle);

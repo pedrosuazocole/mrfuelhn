@@ -4,6 +4,7 @@
 
 const { getAsync, allAsync, runAsync } = require('../config/database');
 const { notificarMantenimiento } = require('../utils/textmebot');
+const { borrarArchivoSeguro } = require('../utils/rutaArchivos');
 const path = require('path');
 const fs = require('fs');
 
@@ -368,6 +369,22 @@ exports.descargarPDFBinario = async (req, res) => {
 exports.eliminarMantenimiento = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Obtener todas las fotos del mantenimiento antes de borrar el registro
+    const fotos = await allAsync(`
+      SELECT mf.ruta_archivo
+      FROM mantenimiento_fotos mf
+      JOIN mantenimiento_evaluaciones me ON mf.evaluacion_id = me.id
+      WHERE me.mantenimiento_id = ?
+    `, [id]);
+
+    let fotosEliminadas = 0;
+    for (const foto of fotos) {
+      const ok = await borrarArchivoSeguro(foto.ruta_archivo);
+      if (ok) fotosEliminadas++;
+    }
+    console.log(`🗑️  Mantenimiento #${id}: ${fotosEliminadas}/${fotos.length} fotos eliminadas del volumen`);
+
     await runAsync('DELETE FROM mantenimientos WHERE id = ?', [id]);
     res.json({ success: true, mensaje: 'Mantenimiento eliminado' });
   } catch (error) {

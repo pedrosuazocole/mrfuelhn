@@ -3,16 +3,23 @@
  * Cacheo básico para funcionamiento offline
  */
 
-const CACHE_NAME = 'mrfuel-v1.0';
+const CACHE_NAME = 'mrfuel-v1.2';
 const CACHE_URLS = [
   '/',
   '/dashboard',
   '/css/style.css',
   '/js/main.js',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/images/icon-192x192.png',
+  '/images/icon-512x512.png'
 ];
+
+// Permitir que la página fuerce la activación inmediata del SW nuevo
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {

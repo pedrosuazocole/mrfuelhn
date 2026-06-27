@@ -9,6 +9,7 @@ const { isAuthenticated, isAdmin, hasRole } = require('../middleware/auth');
 const multer   = require('multer');
 const path     = require('path');
 const fs       = require('fs');
+const { comprimirFotosMiddleware } = require('../utils/comprimirFotos');
 
 // Multer para mantenimiento (mismo patrón que auditorías)
 function getMantenimientoUploadDir() {
@@ -59,7 +60,7 @@ router.post('/nuevo', (req, res, next) => {
     console.log(`📁 Fotos mantenimiento recibidas: ${req.files ? req.files.length : 0}`);
     next();
   });
-}, ctrl.crearMantenimiento);
+}, comprimirFotosMiddleware, ctrl.crearMantenimiento);
 
 router.get('/:id/pdf',          ctrl.generarPDF);
 router.get('/:id',          ctrl.verDetalle);

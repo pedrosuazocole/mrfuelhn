@@ -10,7 +10,7 @@
  */
 
 const https  = require('https');
-const { allAsync } = require('../config/database');
+const { allAsync, getAsync } = require('../config/database');
 
 const BASE = 'https://api.textmebot.com/send.php';
 
@@ -34,18 +34,18 @@ function urlArchivo(ruta) {
 }
 
 // ── GET a la API de TextMeBot ───────────────────────────────────────────────
-function get(url) {
+function get(url, etiqueta = '') {
   return new Promise((resolve, reject) => {
     const req = https.get(url, { timeout: 30000 }, (res) => {
       let body = '';
       res.on('data', c => body += c);
       res.on('end',  () => {
-        console.log(`   → HTTP ${res.statusCode}: ${body.slice(0, 150)}`);
+        console.log(`   → ${etiqueta} HTTP ${res.statusCode}: ${body.slice(0, 300)}`);
         resolve({ status: res.statusCode, body });
       });
     });
-    req.on('error',   e  => reject(e));
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.on('error',   e  => { console.error(`   ❌ ${etiqueta} error de red: ${e.message}`); reject(e); });
+    req.on('timeout', () => { req.destroy(); console.error(`   ❌ ${etiqueta} timeout (30s)`); reject(new Error('timeout')); });
   });
 }
 
@@ -54,8 +54,9 @@ function get(url) {
  * Para texto:    solo `mensaje`
  * Para PDF/foto: `pdfUrl` (NO codificada) + `pdfNombre` + `mensaje` opcional como caption
  */
-async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre }) {
+async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, nombre }) {
   const tel = phone(numero);
+  const etiqueta = `[${nombre || tel} → ${tel}]`;
   let url;
   if (pdfUrl) {
     // IMPORTANTE: pdfUrl va en texto plano, sin encodeURIComponent
@@ -64,7 +65,7 @@ async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre }) 
   } else {
     url = `${BASE}?recipient=%2B${tel}&apikey=${apikey.trim()}&text=${encodeURIComponent(mensaje)}&json=yes`;
   }
-  const r = await get(url);
+  const r = await get(url, etiqueta);
   try { return JSON.parse(r.body); } catch (e) { return { status: r.body }; }
 }
 
@@ -90,7 +91,8 @@ async function textoATodos(mensaje) {
   for (const d of dests) {
     try {
       console.log(`📤 Texto → ${d.nombre}`);
-      const r = await _textmebotEnviar({ numero: d.numero, apikey: d.textmebot_apikey, mensaje });
+      const r = await _textmebotEnviar({ numero: d.numero, apikey: d.textmebot_apikey, mensaje, nombre: d.nombre });
+      console.log(`   ✅ Resultado ${d.nombre}:`, JSON.stringify(r));
       res.push({ nombre: d.nombre, ok: true, r });
     } catch (e) {
       console.error(`❌ Texto ${d.nombre}: ${e.message}`);
@@ -114,8 +116,10 @@ async function documentoATodos(caption, fileUrl, filename) {
         apikey:    d.textmebot_apikey,
         pdfUrl:    fileUrl,
         pdfNombre: filename,
-        mensaje:   caption
+        mensaje:   caption,
+        nombre:    d.nombre
       });
+      console.log(`   ✅ Resultado ${d.nombre}:`, JSON.stringify(r));
       res.push({ nombre: d.nombre, ok: true, r });
     } catch (e) {
       console.error(`❌ Archivo ${d.nombre}: ${e.message}`);
@@ -248,6 +252,30 @@ async function notificarMantenimiento(mant, estacion, tecnico, categoria, evalua
   } catch (e) { console.error('❌ notificarMantenimiento:', e.message); }
 }
 
+// ── Enviar texto a UN número específico (usado por el Agente IA) ────────────
+// Busca la apikey del número que escribió; si no está registrado, usa la
+// apikey del primer número activo configurado (la cuenta "maestra" del negocio).
+async function enviarTexto(numeroDestino, mensaje) {
+  let apikey = null;
+  const registrado = await getAsync(
+    `SELECT textmebot_apikey FROM whatsapp_numeros WHERE numero LIKE ? LIMIT 1`,
+    [`%${phone(numeroDestino)}%`]
+  );
+
+  if (registrado && registrado.textmebot_apikey) {
+    apikey = registrado.textmebot_apikey;
+  } else {
+    const dests = await destinatarios();
+    if (!dests.length) {
+      console.warn('⚠️  enviarTexto: no hay ninguna apikey configurada');
+      return { status: 'error' };
+    }
+    apikey = dests[0].textmebot_apikey;
+  }
+
+  return _textmebotEnviar({ numero: numeroDestino, apikey, mensaje, nombre: 'Agente IA' });
+}
+
 module.exports = {
   notificarAuditoria,
   notificarTicket,
@@ -255,4 +283,5 @@ module.exports = {
   textoATodos,
   imagenATodos,
   documentoATodos,
+  enviarTexto,
 };

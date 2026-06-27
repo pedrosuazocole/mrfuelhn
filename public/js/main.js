@@ -10,8 +10,25 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
         console.log('✅ Service Worker registrado:', registration.scope);
-        
-        // Verificar actualizaciones cada 1 hora
+
+        // Forzar verificación de actualización inmediatamente al cargar
+        registration.update();
+
+        // Si hay un SW nuevo esperando, activarlo y recargar la página una sola vez
+        if (registration.waiting) {
+          registration.waiting.postMessage('SKIP_WAITING');
+        }
+        registration.addEventListener('updatefound', () => {
+          const nuevoSW = registration.installing;
+          nuevoSW.addEventListener('statechange', () => {
+            if (nuevoSW.state === 'installed' && registration.waiting) {
+              // Hay una versión nueva lista — activarla sin esperar
+              registration.waiting.postMessage('SKIP_WAITING');
+            }
+          });
+        });
+
+        // Verificar actualizaciones cada 1 hora mientras la app está abierta
         setInterval(() => {
           registration.update();
         }, 3600000);
@@ -19,6 +36,14 @@ if ('serviceWorker' in navigator) {
       .catch(error => {
         console.log('❌ Error al registrar Service Worker:', error);
       });
+
+    // Recargar automáticamente cuando el nuevo SW toma control
+    let recargando = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (recargando) return;
+      recargando = true;
+      window.location.reload();
+    });
   });
 }
 

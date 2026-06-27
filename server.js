@@ -81,6 +81,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Confiar en el proxy de Railway — necesario para que las cookies de sesión
+// se comporten de forma consistente detrás de su balanceador/proxy HTTPS
+app.set('trust proxy', 1);
+
 // Sesiones
 app.use(session({
   secret: process.env.SESSION_SECRET || 'mr_fuel_secret_key',
@@ -88,7 +92,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 1000 * 60 * 60 * 8, // 8 horas
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
   }
 }));
 
@@ -113,6 +119,7 @@ const ticketsRoutes      = require('./routes/tickets');
 const estacionesRoutes   = require('./routes/estaciones');
 const usuariosRoutes     = require('./routes/usuarios');
 const mantenimientoRoutes = require('./routes/mantenimiento');
+const agenteIARoutes      = require('./routes/agente-ia');
 
 // Rutas públicas
 app.use('/', authRoutes);
@@ -127,6 +134,7 @@ app.use('/tickets',        ticketsRoutes);
 app.use('/estaciones',     estacionesRoutes);
 app.use('/usuarios',       usuariosRoutes);
 app.use('/mantenimiento',  mantenimientoRoutes);
+app.use('/agente-ia',      agenteIARoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {

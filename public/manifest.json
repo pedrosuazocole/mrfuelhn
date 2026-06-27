@@ -11,54 +11,85 @@
   "lang": "es-HN",
   "icons": [
     {
-      "src": "/images/icon-72x72.png",
+      "src": "/images/icon-72x72.png?v=2",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/images/icon-96x96.png",
+      "src": "/images/icon-96x96.png?v=2",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/images/icon-128x128.png",
+      "src": "/images/icon-128x128.png?v=2",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/images/icon-144x144.png",
+      "src": "/images/icon-144x144.png?v=2",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/images/icon-152x152.png",
+      "src": "/images/icon-152x152.png?v=2",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/images/icon-192x192.png",
+      "src": "/images/icon-192x192.png?v=2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/images/icon-384x384.png",
+      "src": "/images/icon-384x384.png?v=2",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/images/icon-512x512.png",
+      "src": "/images/icon-512x512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "business"],
-  "prefer_related_applications": false
+  "categories": [
+    "productivity",
+    "business"
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Nueva Auditoría",
+      "short_name": "Auditoría",
+      "description": "Crear una nueva auditoría",
+      "url": "/auditorias-v2/nueva",
+      "icons": [
+        {
+          "src": "/images/icon-96x96.png?v=2",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Mantenimiento",
+      "short_name": "Mantenimiento",
+      "description": "Registrar mantenimiento",
+      "url": "/mantenimiento/nuevo",
+      "icons": [
+        {
+          "src": "/images/icon-96x96.png?v=2",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

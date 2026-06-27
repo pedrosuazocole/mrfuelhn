@@ -6,6 +6,7 @@
 const { getAsync, allAsync, runAsync, db } = require('../config/database');
 const { enviarNotificacionAuditoriaV2 } = require('../utils/email');
 const { notificarAuditoria } = require('../utils/textmebot');
+const { borrarArchivoSeguro } = require('../utils/rutaArchivos');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -415,16 +416,14 @@ exports.eliminarAuditoria = async (req, res) => {
       WHERE e.auditoria_id = ?
     `, [id]);
     
-    // Eliminar archivos de fotos
+    // Eliminar archivos de fotos (ruta correcta: volumen de Railway, no public/)
+    let fotosEliminadas = 0;
     for (const foto of fotos) {
-      try {
-        const rutaCompleta = path.join(__dirname, '..', 'public', foto.ruta_archivo);
-        await fs.unlink(rutaCompleta);
-      } catch (err) {
-        console.warn('No se pudo eliminar foto:', foto.ruta_archivo);
-      }
+      const ok = await borrarArchivoSeguro(foto.ruta_archivo);
+      if (ok) fotosEliminadas++;
     }
-    
+    console.log(`🗑️  Auditoría #${id}: ${fotosEliminadas}/${fotos.length} fotos eliminadas del volumen`);
+
     // Eliminar auditoría (cascade eliminará evaluaciones y fotos)
     await runAsync('DELETE FROM auditorias_v2 WHERE id = ?', [id]);
     
