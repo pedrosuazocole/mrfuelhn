@@ -104,6 +104,40 @@ async function generarReporteMantenimientos(fecha) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// RECORDATORIO — AUDITORÍAS PENDIENTES DEL DÍA (8:00 AM)
+// ════════════════════════════════════════════════════════════════════════════
+async function generarRecordatorioAuditorias() {
+  const fechaHoy = moment().tz(TZ).format('YYYY-MM-DD');
+  const fechaTexto = moment().tz(TZ).format('DD/MM/YYYY');
+
+  // Estaciones activas que todavía NO tienen una auditoría registrada hoy
+  const estacionesPendientes = await allAsync(`
+    SELECT e.id, e.nombre
+    FROM estaciones e
+    WHERE e.activo = 1
+      AND e.id NOT IN (
+        SELECT estacion_id FROM auditorias_v2 WHERE fecha_visita = ?
+      )
+    ORDER BY e.nombre ASC
+  `, [fechaHoy]);
+
+  let msg = `⏰ *RECORDATORIO DE AUDITORÍAS — ${fechaTexto}*\n\n`;
+
+  if (estacionesPendientes.length === 0) {
+    msg += `✅ Todas las estaciones activas ya tienen auditoría registrada hoy. ¡Buen trabajo!`;
+    return msg;
+  }
+
+  msg += `Buen día. Estas estaciones aún no tienen auditoría hoy:\n\n`;
+  for (const e of estacionesPendientes) {
+    msg += `📍 ${e.nombre}\n`;
+  }
+  msg += `\nTotal pendientes: ${estacionesPendientes.length}`;
+
+  return msg;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // REPORTE 3 — TICKETS ABIERTOS (7:00 PM)
 // ════════════════════════════════════════════════════════════════════════════
 async function generarReporteTickets() {
@@ -147,6 +181,14 @@ async function generarReporteTickets() {
 // FUNCIONES DE ENVÍO — usadas tanto por el cron como por el envío manual
 // ════════════════════════════════════════════════════════════════════════════
 
+async function enviarRecordatorioAuditorias() {
+  const mensaje = await generarRecordatorioAuditorias();
+  console.log('📤 Enviando recordatorio de auditorías pendientes...');
+  const resultado = await textoATodos(mensaje);
+  console.log(`✅ Recordatorio de auditorías enviado a ${resultado.length} número(s)`);
+  return { mensaje, resultado };
+}
+
 async function enviarReporteAuditorias(fecha = null) {
   const fechaUsar = fecha || moment().tz(TZ).format('YYYY-MM-DD');
   const mensaje = await generarReporteAuditorias(fechaUsar);
@@ -177,7 +219,9 @@ module.exports = {
   generarReporteAuditorias,
   generarReporteMantenimientos,
   generarReporteTickets,
+  generarRecordatorioAuditorias,
   enviarReporteAuditorias,
   enviarReporteMantenimientos,
   enviarReporteTickets,
+  enviarRecordatorioAuditorias,
 };

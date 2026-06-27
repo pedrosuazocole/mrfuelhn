@@ -264,6 +264,21 @@ exports.espacioVolumen = async (req, res) => {
 };
 
 /**
+ * Envío manual del recordatorio de auditorías pendientes por WhatsApp.
+ * GET /admin/reporte/recordatorio-auditorias  (solo admin)
+ */
+exports.enviarRecordatorioAuditoriasManual = async (req, res) => {
+  try {
+    const { enviarRecordatorioAuditorias } = require('../utils/reportesDiarios');
+    const { mensaje, resultado } = await enviarRecordatorioAuditorias();
+    res.json({ success: true, mensaje_enviado: mensaje, destinatarios: resultado });
+  } catch (error) {
+    console.error('Error en enviarRecordatorioAuditoriasManual:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al enviar el recordatorio: ' + error.message });
+  }
+};
+
+/**
  * Envío manual del reporte diario de auditorías por WhatsApp.
  * GET /admin/reporte/auditorias  (solo admin)
  * Acepta ?fecha=YYYY-MM-DD opcional; por defecto usa el día de hoy.

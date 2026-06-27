@@ -25,6 +25,7 @@ router.get('/limpiar-volumen', adminController.limpiarVolumen);
 router.get('/espacio-volumen', adminController.espacioVolumen);
 
 // Envío manual de reportes diarios por WhatsApp (mismos reportes del cron)
+router.get('/reporte/recordatorio-auditorias', adminController.enviarRecordatorioAuditoriasManual);
 router.get('/reporte/auditorias',     adminController.enviarReporteAuditoriasManual);
 router.get('/reporte/mantenimientos', adminController.enviarReporteMantenimientosManual);
 router.get('/reporte/tickets',        adminController.enviarReporteTicketsManual);

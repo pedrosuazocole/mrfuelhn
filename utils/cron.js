@@ -11,6 +11,7 @@ const {
   enviarReporteAuditorias,
   enviarReporteMantenimientos,
   enviarReporteTickets,
+  enviarRecordatorioAuditorias,
 } = require('./reportesDiarios');
 
 // Configurar timezone
@@ -150,6 +151,21 @@ const reenviarRecordatoriosFallidos = () => {
 };
 
 /**
+ * Recordatorio de auditorías pendientes — todos los días a las 8:00 AM
+ */
+const programarRecordatorioAuditorias = () => {
+  // 0 8 * * *  (8:00 AM, todos los días)
+  cron.schedule('0 8 * * *', async () => {
+    console.log('\n⏰ [Cron] Enviando recordatorio de auditorías (8:00 AM)...');
+    try {
+      await enviarRecordatorioAuditorias();
+    } catch (error) {
+      console.error('❌ Error en recordatorio de auditorías:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
  * Reporte diario de auditorías — todos los días a las 2:00 PM
  */
 const programarReporteAuditorias = () => {
@@ -201,9 +217,11 @@ const iniciarCronJobs = () => {
   console.log('\n🚀 Iniciando sistema de recordatorios automáticos...\n');
   programarRecordatoriosSemanales();
   reenviarRecordatoriosFallidos();
+  programarRecordatorioAuditorias();
   programarReporteAuditorias();
   programarReporteMantenimientos();
   programarReporteTickets();
+  console.log('📅 Recordatorio de auditorías por WhatsApp: 8:00am');
   console.log('📅 Reportes diarios por WhatsApp programados: 2:00pm (auditorías), 5:00pm (mantenimiento), 7:00pm (tickets)');
   console.log('✅ Cron jobs activados\n');
 };
