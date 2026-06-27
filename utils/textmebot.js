@@ -54,7 +54,7 @@ function get(url, etiqueta = '') {
  * Para texto:    solo `mensaje`
  * Para PDF/foto: `pdfUrl` (NO codificada) + `pdfNombre` + `mensaje` opcional como caption
  */
-async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, nombre }) {
+async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, nombre }, intento = 1) {
   const tel = phone(numero);
   const etiqueta = `[${nombre || tel} → ${tel}]`;
   let url;
@@ -66,7 +66,22 @@ async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, no
     url = `${BASE}?recipient=%2B${tel}&apikey=${apikey.trim()}&text=${encodeURIComponent(mensaje)}&json=yes`;
   }
   const r = await get(url, etiqueta);
-  try { return JSON.parse(r.body); } catch (e) { return { status: r.body }; }
+  let parsed;
+  try { parsed = JSON.parse(r.body); } catch (e) { parsed = { status: r.body }; }
+
+  // TextMeBot exige mínimo 8s entre mensajes; si llegamos demasiado rápido
+  // (variación de latencia, primer envío del proceso, etc.), reintentamos
+  // una sola vez tras esperar un poco más, en vez de perder la notificación.
+  const esDelayNeeded = parsed && parsed.status === 'error'
+    && typeof parsed.comment === 'string' && parsed.comment.toLowerCase().includes('delay needed');
+
+  if (esDelayNeeded && intento < 2) {
+    console.warn(`⚠️  ${etiqueta} TextMeBot pidió más espera, reintentando en 9s...`);
+    await wait(9000);
+    return _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, nombre }, intento + 1);
+  }
+
+  return parsed;
 }
 
 // ── Obtener destinatarios con API Key configurada ─────────────────────────
@@ -98,7 +113,7 @@ async function textoATodos(mensaje) {
       console.error(`❌ Texto ${d.nombre}: ${e.message}`);
       res.push({ nombre: d.nombre, ok: false, error: e.message });
     }
-    await wait(5000);
+    await wait(9000);
   }
   return res;
 }
@@ -125,7 +140,7 @@ async function documentoATodos(caption, fileUrl, filename) {
       console.error(`❌ Archivo ${d.nombre}: ${e.message}`);
       res.push({ nombre: d.nombre, ok: false, error: e.message });
     }
-    await wait(5000);
+    await wait(9000);
   }
   return res;
 }
@@ -164,7 +179,7 @@ async function notificarAuditoria(auditoria, estacion, auditor, evaluaciones, fo
     // 1) Texto
     console.log('📱 [Auditoría] Enviando resumen de texto...');
     await textoATodos(msg);
-    await wait(5000);
+    await wait(9000);
 
     // 2) PDF — incluye las fotos embebidas dentro del documento
     const pdfUrl  = `${APP_URL}/auditorias-v2/${auditoria.id}/pdf-download`;
@@ -202,7 +217,7 @@ async function notificarTicket(ticket, estacion, asignado, creador, accion = 'cr
     await textoATodos(msg);
 
     if (ticket.foto_evidencia) {
-      await wait(5000);
+      await wait(9000);
       const url = urlArchivo(ticket.foto_evidencia);
       if (url) {
         console.log(`📱 [Ticket] Foto: ${url}`);
@@ -240,7 +255,7 @@ async function notificarMantenimiento(mant, estacion, tecnico, categoria, evalua
 
     console.log('📱 [Mantenimiento] Enviando texto...');
     await textoATodos(msg);
-    await wait(5000);
+    await wait(9000);
 
     // PDF — incluye las fotos embebidas dentro del documento
     const pdfUrl  = `${APP_URL}/mantenimiento/${mant.id}/pdf-download`;
