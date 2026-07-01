@@ -287,12 +287,21 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       
       progressBar.style.width = '70%';
-      
+
       // Verificar si la sesión expiró (401)
       if (response.status === 401) {
         alert('⚠️ Tu sesión ha expirado.\n\nLa página se va a recargar para que iniciés sesión nuevamente.');
         window.location.href = '/login';
         return;
+      }
+
+      // Verificar si el servidor devolvió algo que NO es JSON
+      // (ej: "upstream error" de Railway cuando el servidor está reiniciando)
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const textoError = await response.text().catch(() => 'Error desconocido del servidor');
+        console.error('Respuesta no-JSON del servidor:', textoError);
+        throw new Error('El servidor no respondió correctamente. Si el problema persiste, recargá la página e intentá de nuevo.');
       }
 
       const result = await response.json();
