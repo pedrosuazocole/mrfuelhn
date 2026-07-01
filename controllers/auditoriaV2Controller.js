@@ -154,7 +154,7 @@ exports.crearAuditoria = async (req, res) => {
         "SELECT id FROM categorias WHERE nombre = 'TIENDA'"
       );
       const categoriaIds = categoriasTienda.map(c => c.id);
-      // Proteger contra IN() vacío que SQLite rechaza
+      // Proteger contra IN() vacío — SQLite lo rechaza
       if (categoriaIds.length > 0) {
         itemsDelArea = await allAsync(
           `SELECT id FROM items_auditoria WHERE categoria_id IN (${categoriaIds.join(',')}) AND activo = 1`
@@ -201,7 +201,7 @@ exports.crearAuditoria = async (req, res) => {
       req.session.userId,
       fecha_visita,
       hora_visita,
-      area_evaluada,          // ← columna que faltaba en el INSERT
+      area_evaluada,
       calificacionGeneral,
       totalItems,
       itemsCumplidos,
