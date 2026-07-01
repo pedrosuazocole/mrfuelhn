@@ -278,14 +278,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const progressBar = document.getElementById('progressBar');
       progressBar.style.width = '30%';
       
-      // Enviar
+      // Enviar — credentials:'include' es necesario para que Railway envíe
+      // la cookie de sesión correctamente en conexiones HTTPS (mobile/Chrome)
       const response = await fetch('/auditorias-v2/nueva', {
         method: 'POST',
+        credentials: 'include',
         body: formData
       });
       
       progressBar.style.width = '70%';
       
+      // Verificar si la sesión expiró (401)
+      if (response.status === 401) {
+        alert('⚠️ Tu sesión ha expirado.\n\nLa página se va a recargar para que iniciés sesión nuevamente.');
+        window.location.href = '/login';
+        return;
+      }
+
       const result = await response.json();
       
       progressBar.style.width = '100%';
