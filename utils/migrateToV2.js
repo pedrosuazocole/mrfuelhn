@@ -173,6 +173,7 @@ async function migrarAV2() {
         auditor_id INTEGER NOT NULL,
         fecha_visita DATE NOT NULL,
         hora_visita TIME NOT NULL,
+        area_evaluada TEXT NOT NULL DEFAULT 'pista',
         calificacion_general REAL,
         total_items INTEGER DEFAULT 0,
         items_cumplidos INTEGER DEFAULT 0,
@@ -265,6 +266,17 @@ async function migrarAV2() {
       // Columna ya existe — normal en deploys posteriores
       console.log('  ℹ️  textmebot_apikey ya existe en whatsapp_numeros');
     }
+
+    // ── MIGRACIÓN CRÍTICA: agregar area_evaluada a auditorias_v2 ──────────
+    // Esta columna faltaba en el esquema original y causaba el error
+    // "upstream error is not valid JSON" al intentar guardar una auditoría
+    try {
+      await runAsync(`ALTER TABLE auditorias_v2 ADD COLUMN area_evaluada TEXT NOT NULL DEFAULT 'pista'`);
+      console.log('✅ Columna area_evaluada agregada a auditorias_v2');
+    } catch (e) {
+      console.log('  ℹ️  area_evaluada ya existe en auditorias_v2');
+    }
+
 
     // Insertar números por defecto
     await runAsync(`
