@@ -3,7 +3,7 @@
  * Cacheo básico para funcionamiento offline
  */
 
-const CACHE_NAME = 'mrfuel-v1.2';
+const CACHE_NAME = 'mrfuel-v1.3';
 const CACHE_URLS = [
   '/',
   '/dashboard',
