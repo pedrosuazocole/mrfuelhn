@@ -154,9 +154,12 @@ exports.crearAuditoria = async (req, res) => {
         "SELECT id FROM categorias WHERE nombre = 'TIENDA'"
       );
       const categoriaIds = categoriasTienda.map(c => c.id);
-      itemsDelArea = await allAsync(
-        `SELECT id FROM items_auditoria WHERE categoria_id IN (${categoriaIds.join(',')}) AND activo = 1`
-      );
+      // Proteger contra IN() vacío que SQLite rechaza
+      if (categoriaIds.length > 0) {
+        itemsDelArea = await allAsync(
+          `SELECT id FROM items_auditoria WHERE categoria_id IN (${categoriaIds.join(',')}) AND activo = 1`
+        );
+      }
     }
     
     console.log(`📋 Total ítems en área ${area_evaluada}:`, itemsDelArea.length);
@@ -187,16 +190,18 @@ exports.crearAuditoria = async (req, res) => {
     const resultado = await runAsync(`
       INSERT INTO auditorias_v2 (
         estacion_id, auditor_id, fecha_visita, hora_visita,
+        area_evaluada,
         calificacion_general, total_items, items_cumplidos,
         observaciones_generales, recomendaciones,
         supervisor_nombre, supervisor_firma,
         estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
     `, [
       estacion_id,
       req.session.userId,
       fecha_visita,
       hora_visita,
+      area_evaluada,          // ← columna que faltaba en el INSERT
       calificacionGeneral,
       totalItems,
       itemsCumplidos,
