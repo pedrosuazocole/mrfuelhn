@@ -172,31 +172,9 @@ exports.crearMantenimiento = async (req, res) => {
 
     res.json({ success: true, mantenimientoId, mensaje: 'Mantenimiento creado exitosamente', whatsappUrls });
 
-    // ── CallmeBot: notificación automática (después de responder al cliente) ──
-    try {
-      const mantCompleto  = await getAsync('SELECT * FROM mantenimientos WHERE id = ?', [mantenimientoId]);
-      const estacionObj   = await getAsync('SELECT * FROM estaciones WHERE id = ?', [estacion_id]);
-      const tecnicoObj    = await getAsync('SELECT * FROM usuarios WHERE id = ?', [tecnico_id]);
-      const categoriaObj  = await getAsync('SELECT * FROM mantenimiento_categorias WHERE id = ?', [categoria_id]);
-      const evalCompletas = await allAsync(`
-        SELECT me.*, mi.nombre AS item_nombre
-        FROM mantenimiento_evaluaciones me
-        INNER JOIN mantenimiento_items mi ON me.item_id = mi.id
-        WHERE me.mantenimiento_id = ? ORDER BY mi.orden
-      `, [mantenimientoId]);
-      const fotosCompletas = await allAsync(`
-        SELECT mf.*, mi.nombre AS item_nombre
-        FROM mantenimiento_fotos mf
-        INNER JOIN mantenimiento_evaluaciones me ON mf.evaluacion_id = me.id
-        INNER JOIN mantenimiento_items mi ON me.item_id = mi.id
-        WHERE me.mantenimiento_id = ? ORDER BY mi.orden, mf.orden
-      `, [mantenimientoId]);
-
-      notificarMantenimiento(mantCompleto, estacionObj, tecnicoObj, categoriaObj, evalCompletas, fotosCompletas)
-        .catch(err => console.error('⚠️  TextMeBot mantenimiento:', err.message));
-    } catch (cbErr) {
-      console.error('⚠️  TextMeBot prep mantenimiento:', cbErr.message);
-    }
+    // NOTA: La notificación WhatsApp la dispara el frontend vía POST /mantenimiento/:id/enviar-whatsapp
+    // cuando el usuario usa "Guardar y Enviar". Quitamos la llamada automática aquí para evitar
+    // el doble envío (controlador + frontend al mismo tiempo).
 
   } catch (error) {
     console.error('Error crearMantenimiento:', error);
