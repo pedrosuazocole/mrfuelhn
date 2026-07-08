@@ -17,10 +17,10 @@ router.get('/nueva', isAdmin, (req, res) => {
 
 router.post('/nueva', isAdmin, async (req, res) => {
   try {
-    const { nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud, longitud } = req.body;
+    const { nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud, longitud, whatsapp_numero, whatsapp_apikey } = req.body;
     await runAsync(
-      'INSERT INTO estaciones (nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud, longitud) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud || null, longitud || null]
+      'INSERT INTO estaciones (nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud, longitud, whatsapp_numero, whatsapp_apikey) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud || null, longitud || null, whatsapp_numero?.trim() || null, whatsapp_apikey?.trim() || null]
     );
     res.redirect('/estaciones');
   } catch (error) {
@@ -44,10 +44,10 @@ router.get('/editar/:id', isAdmin, async (req, res) => {
 
 router.post('/editar/:id', isAdmin, async (req, res) => {
   try {
-    const { nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud, longitud, activo } = req.body;
+    const { nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud, longitud, activo, whatsapp_numero, whatsapp_apikey } = req.body;
     await runAsync(
-      'UPDATE estaciones SET nombre = ?, codigo = ?, direccion = ?, ciudad = ?, departamento = ?, telefono = ?, encargado = ?, latitud = ?, longitud = ?, activo = ? WHERE id = ?',
-      [nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud || null, longitud || null, activo === 'on' ? 1 : 0, req.params.id]
+      'UPDATE estaciones SET nombre = ?, codigo = ?, direccion = ?, ciudad = ?, departamento = ?, telefono = ?, encargado = ?, latitud = ?, longitud = ?, activo = ?, whatsapp_numero = ?, whatsapp_apikey = ? WHERE id = ?',
+      [nombre, codigo, direccion, ciudad, departamento, telefono, encargado, latitud || null, longitud || null, activo === 'on' ? 1 : 0, whatsapp_numero?.trim() || null, whatsapp_apikey?.trim() || null, req.params.id]
     );
     res.redirect('/estaciones');
   } catch (error) {
