@@ -11,14 +11,21 @@ const { getAsync, allAsync, runAsync } = require('../config/database');
 exports.listarNumeros = async (req, res) => {
   try {
     const numeros = await allAsync(`
-      SELECT * FROM whatsapp_numeros 
-      ORDER BY activo DESC, nombre ASC
+      SELECT w.*, e.nombre AS estacion_nombre
+      FROM whatsapp_numeros w
+      LEFT JOIN estaciones e ON w.estacion_id = e.id
+      ORDER BY w.activo DESC, w.nombre ASC
     `);
+
+    const estaciones = await allAsync(
+      'SELECT id, nombre FROM estaciones WHERE activo = 1 ORDER BY nombre'
+    );
 
     res.render('admin/whatsapp', {
       user: req.session,
       titulo: 'Gestión de WhatsApp',
-      numeros
+      numeros,
+      estaciones
     });
   } catch (error) {
     console.error('Error:', error);
@@ -31,11 +38,11 @@ exports.listarNumeros = async (req, res) => {
  */
 exports.agregarNumero = async (req, res) => {
   try {
-    const { nombre, numero, cargo, textmebot_apikey } = req.body;
+    const { nombre, numero, cargo, textmebot_apikey, estacion_id } = req.body;
     const numeroLimpio = numero.replace(/[^0-9+]/g, '');
     await runAsync(
-      'INSERT INTO whatsapp_numeros (nombre, numero, cargo, textmebot_apikey) VALUES (?, ?, ?, ?)',
-      [nombre, numeroLimpio, cargo || null, textmebot_apikey?.trim() || null]
+      'INSERT INTO whatsapp_numeros (nombre, numero, cargo, textmebot_apikey, estacion_id) VALUES (?, ?, ?, ?, ?)',
+      [nombre, numeroLimpio, cargo || null, textmebot_apikey?.trim() || null, estacion_id || null]
     );
     res.redirect('/admin/whatsapp');
   } catch (error) {
@@ -50,11 +57,11 @@ exports.agregarNumero = async (req, res) => {
 exports.editarNumero = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, numero, cargo, textmebot_apikey } = req.body;
+    const { nombre, numero, cargo, textmebot_apikey, estacion_id } = req.body;
     const numeroLimpio = numero.replace(/[^0-9+]/g, '');
     await runAsync(
-      'UPDATE whatsapp_numeros SET nombre = ?, numero = ?, cargo = ?, textmebot_apikey = ? WHERE id = ?',
-      [nombre, numeroLimpio, cargo || null, textmebot_apikey?.trim() || null, id]
+      'UPDATE whatsapp_numeros SET nombre = ?, numero = ?, cargo = ?, textmebot_apikey = ?, estacion_id = ? WHERE id = ?',
+      [nombre, numeroLimpio, cargo || null, textmebot_apikey?.trim() || null, estacion_id || null, id]
     );
     res.redirect('/admin/whatsapp');
   } catch (error) {
@@ -69,9 +76,7 @@ exports.editarNumero = async (req, res) => {
 exports.eliminarNumero = async (req, res) => {
   try {
     const { id } = req.params;
-    
     await runAsync('DELETE FROM whatsapp_numeros WHERE id = ?', [id]);
-    
     res.json({ success: true });
   } catch (error) {
     console.error('Error:', error);
@@ -85,12 +90,10 @@ exports.eliminarNumero = async (req, res) => {
 exports.toggleActivo = async (req, res) => {
   try {
     const { id } = req.params;
-    
     await runAsync(
       'UPDATE whatsapp_numeros SET activo = NOT activo WHERE id = ?',
       [id]
     );
-    
     res.json({ success: true });
   } catch (error) {
     console.error('Error:', error);
