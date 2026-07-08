@@ -287,6 +287,23 @@ async function migrarAV2() {
       console.log('  ℹ️  estacion_id ya existe en whatsapp_numeros');
     }
 
+    // ── MIGRACIÓN: número y API Key remitente por estación ────────────────
+    // whatsapp_numero  → número desde el que se ENVÍAN los reportes de esa estación
+    // whatsapp_apikey  → API Key de TextMeBot de ese número remitente
+    // Si no se configura, se usará el primer apikey global disponible (fallback)
+    try {
+      await runAsync(`ALTER TABLE estaciones ADD COLUMN whatsapp_numero TEXT`);
+      console.log('✅ Columna whatsapp_numero agregada a estaciones');
+    } catch (e) {
+      console.log('  ℹ️  whatsapp_numero ya existe en estaciones');
+    }
+    try {
+      await runAsync(`ALTER TABLE estaciones ADD COLUMN whatsapp_apikey TEXT`);
+      console.log('✅ Columna whatsapp_apikey agregada a estaciones');
+    } catch (e) {
+      console.log('  ℹ️  whatsapp_apikey ya existe en estaciones');
+    }
+
 
     // Insertar números por defecto
     await runAsync(`

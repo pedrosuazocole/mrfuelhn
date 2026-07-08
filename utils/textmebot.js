@@ -84,11 +84,33 @@ async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, no
   return parsed;
 }
 
-// ── Obtener destinatarios con API Key configurada ─────────────────────────
-// Si se pasa estacionId, retorna:
-//   1. Números asignados específicamente a esa estación
-//   2. Números sin estación asignada (NULL) → reciben todo (supervisores globales)
-// Si NO se pasa estacionId, retorna todos los activos con API Key.
+// ── Obtener apikey remitente de una estación ──────────────────────────────
+// Prioridad: 1) apikey de la estación  2) primer apikey global activo (fallback)
+async function apiKeyRemitente(estacionId = null) {
+  if (estacionId) {
+    const est = await getAsync(
+      `SELECT whatsapp_numero, whatsapp_apikey FROM estaciones WHERE id = ? AND whatsapp_apikey IS NOT NULL AND TRIM(whatsapp_apikey) != ''`,
+      [estacionId]
+    );
+    if (est && est.whatsapp_apikey) {
+      console.log(`🔑 Usando API Key remitente de estación ${estacionId}: ${est.whatsapp_numero}`);
+      return { apikey: est.whatsapp_apikey, numero_remitente: est.whatsapp_numero };
+    }
+  }
+  // Fallback: primer número global con apikey
+  const global = await getAsync(
+    `SELECT numero, textmebot_apikey FROM whatsapp_numeros WHERE activo = 1 AND textmebot_apikey IS NOT NULL AND TRIM(textmebot_apikey) != '' ORDER BY id LIMIT 1`
+  );
+  if (global) {
+    console.log(`🔑 Usando API Key global de fallback: ${global.numero}`);
+    return { apikey: global.textmebot_apikey, numero_remitente: global.numero };
+  }
+  return null;
+}
+
+// ── Obtener destinatarios (números que RECIBEN) filtrados por estación ────
+// Si estacionId: recibe esa estación + los globales (NULL)
+// Si no: todos los activos con apikey
 async function destinatarios(estacionId = null) {
   let rows;
   if (estacionId) {
@@ -96,8 +118,6 @@ async function destinatarios(estacionId = null) {
       `SELECT nombre, numero, textmebot_apikey
        FROM whatsapp_numeros
        WHERE activo = 1
-         AND textmebot_apikey IS NOT NULL
-         AND TRIM(textmebot_apikey) != ''
          AND (estacion_id = ? OR estacion_id IS NULL)
        ORDER BY nombre`,
       [estacionId]
@@ -107,24 +127,27 @@ async function destinatarios(estacionId = null) {
       `SELECT nombre, numero, textmebot_apikey
        FROM whatsapp_numeros
        WHERE activo = 1
-         AND textmebot_apikey IS NOT NULL
-         AND TRIM(textmebot_apikey) != ''
        ORDER BY nombre`
     );
   }
-  console.log(`📋 TextMeBot — ${rows.length} número(s) para estación ${estacionId || 'global'}: ${rows.map(r => r.nombre).join(', ')}`);
+  console.log(`📋 Destinatarios para estación ${estacionId || 'global'}: ${rows.map(r => r.nombre).join(', ') || 'ninguno'}`);
   return rows;
 }
 
 // ── A todos: texto ─────────────────────────────────────────────────────────
 async function textoATodos(mensaje, estacionId = null) {
   const dests = await destinatarios(estacionId);
-  if (!dests.length) { console.log('⚠️  Sin destinatarios con API Key'); return []; }
+  if (!dests.length) { console.log('⚠️  Sin destinatarios configurados'); return []; }
+
+  const remitente = await apiKeyRemitente(estacionId);
+  if (!remitente) { console.log('⚠️  Sin API Key remitente disponible'); return []; }
+
   const res = [];
   for (const d of dests) {
     try {
-      console.log(`📤 Texto → ${d.nombre}`);
-      const r = await _textmebotEnviar({ numero: d.numero, apikey: d.textmebot_apikey, mensaje, nombre: d.nombre });
+      console.log(`📤 Texto → ${d.nombre} (${d.numero}) vía ${remitente.numero_remitente}`);
+      // Se usa el apikey de la ESTACIÓN como remitente, enviando AL número del destinatario
+      const r = await _textmebotEnviar({ numero: d.numero, apikey: remitente.apikey, mensaje, nombre: d.nombre });
       console.log(`   ✅ Resultado ${d.nombre}:`, JSON.stringify(r));
       res.push({ nombre: d.nombre, ok: true, r });
     } catch (e) {
@@ -136,17 +159,21 @@ async function textoATodos(mensaje, estacionId = null) {
   return res;
 }
 
-// ── A todos: documento (PDF o imagen — TextMeBot detecta el tipo por la URL) ──
+// ── A todos: documento ─────────────────────────────────────────────────────
 async function documentoATodos(caption, fileUrl, filename, estacionId = null) {
   const dests = await destinatarios(estacionId);
   if (!dests.length) return [];
+
+  const remitente = await apiKeyRemitente(estacionId);
+  if (!remitente) { console.log('⚠️  Sin API Key remitente disponible'); return []; }
+
   const res = [];
   for (const d of dests) {
     try {
-      console.log(`📤 Archivo → ${d.nombre}: ${fileUrl}`);
+      console.log(`📤 Archivo → ${d.nombre} (${d.numero}) vía ${remitente.numero_remitente}: ${fileUrl}`);
       const r = await _textmebotEnviar({
         numero:    d.numero,
-        apikey:    d.textmebot_apikey,
+        apikey:    remitente.apikey,
         pdfUrl:    fileUrl,
         pdfNombre: filename,
         mensaje:   caption,
