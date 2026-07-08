@@ -103,6 +103,47 @@
             Estación Activa
           </label>
         </div>
+
+        <div class="card-header" style="margin-top: 20px;">
+          <i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Remitente (TextMeBot)
+        </div>
+        <p style="padding: 12px 0 4px; color: #555; font-size: 0.9em;">
+          Configurá el número <strong>desde el cual se enviarán</strong> los reportes de esta estación.<br>
+          Cada estación puede tener su propio número y API Key de TextMeBot.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="whatsapp_numero">
+              <i class="fab fa-whatsapp" style="color:#25D366;"></i> Número remitente
+            </label>
+            <input type="text" name="whatsapp_numero" id="whatsapp_numero" class="form-control"
+                   placeholder="+50499999999"
+                   value="<%= estacion.whatsapp_numero || '' %>">
+            <small class="form-text">Número registrado en TextMeBot que enviará los reportes de esta estación.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="whatsapp_apikey">
+              <i class="fas fa-key"></i> TextMeBot API Key
+            </label>
+            <input type="text" name="whatsapp_apikey" id="whatsapp_apikey" class="form-control"
+                   placeholder="Ej: 1234567"
+                   value="<%= estacion.whatsapp_apikey || '' %>">
+            <small class="form-text">API Key obtenida en <strong>textmebot.com</strong> para ese número.</small>
+          </div>
+        </div>
+
+        <% if (estacion.whatsapp_apikey) { %>
+          <p style="padding: 8px 12px; background: #e6f9ee; border-left: 4px solid #25D366; border-radius: 4px; font-size: 0.88em; color: #1a7a3a;">
+            <i class="fas fa-check-circle"></i> <strong>API Key configurada.</strong>
+            Los reportes de <em><%= estacion.nombre %></em> se enviarán desde <%= estacion.whatsapp_numero || 'este número' %>.
+          </p>
+        <% } else { %>
+          <p style="padding: 8px 12px; background: #fff8e1; border-left: 4px solid #ffc107; border-radius: 4px; font-size: 0.88em; color: #7a5c00;">
+            <i class="fas fa-exclamation-triangle"></i> Sin API Key configurada. Se usará el número global de fallback.
+          </p>
+        <% } %>
         
         <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px;">
           <a href="/estaciones" class="btn btn-secondary">

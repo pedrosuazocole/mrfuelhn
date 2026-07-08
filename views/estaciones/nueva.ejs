@@ -96,6 +96,25 @@
             <input type="number" step="any" name="longitud" id="longitud" class="form-control" placeholder="-87.1921">
           </div>
         </div>
+
+        <div class="card-header" style="margin-top: 20px;">
+          <i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Remitente (TextMeBot)
+        </div>
+        <p style="padding: 12px 0 4px; color: #555; font-size: 0.9em;">
+          Opcional — configurá el número <strong>desde el cual se enviarán</strong> los reportes de esta estación.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="whatsapp_numero"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Número remitente</label>
+            <input type="text" name="whatsapp_numero" id="whatsapp_numero" class="form-control" placeholder="+50499999999">
+            <small class="form-text">Número registrado en TextMeBot que enviará los reportes de esta estación.</small>
+          </div>
+          <div class="form-group">
+            <label for="whatsapp_apikey"><i class="fas fa-key"></i> TextMeBot API Key</label>
+            <input type="text" name="whatsapp_apikey" id="whatsapp_apikey" class="form-control" placeholder="Ej: 1234567">
+            <small class="form-text">API Key obtenida en <strong>textmebot.com</strong> para ese número.</small>
+          </div>
+        </div>
         
         <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px;">
           <a href="/estaciones" class="btn btn-secondary">
