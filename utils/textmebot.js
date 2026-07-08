@@ -85,22 +85,40 @@ async function _textmebotEnviar({ numero, apikey, mensaje, pdfUrl, pdfNombre, no
 }
 
 // ── Obtener destinatarios con API Key configurada ─────────────────────────
-async function destinatarios() {
-  const rows = await allAsync(
-    `SELECT nombre, numero, textmebot_apikey
-     FROM whatsapp_numeros
-     WHERE activo = 1
-       AND textmebot_apikey IS NOT NULL
-       AND TRIM(textmebot_apikey) != ''
-     ORDER BY nombre`
-  );
-  console.log(`📋 TextMeBot — ${rows.length} número(s): ${rows.map(r => r.nombre).join(', ')}`);
+// Si se pasa estacionId, retorna:
+//   1. Números asignados específicamente a esa estación
+//   2. Números sin estación asignada (NULL) → reciben todo (supervisores globales)
+// Si NO se pasa estacionId, retorna todos los activos con API Key.
+async function destinatarios(estacionId = null) {
+  let rows;
+  if (estacionId) {
+    rows = await allAsync(
+      `SELECT nombre, numero, textmebot_apikey
+       FROM whatsapp_numeros
+       WHERE activo = 1
+         AND textmebot_apikey IS NOT NULL
+         AND TRIM(textmebot_apikey) != ''
+         AND (estacion_id = ? OR estacion_id IS NULL)
+       ORDER BY nombre`,
+      [estacionId]
+    );
+  } else {
+    rows = await allAsync(
+      `SELECT nombre, numero, textmebot_apikey
+       FROM whatsapp_numeros
+       WHERE activo = 1
+         AND textmebot_apikey IS NOT NULL
+         AND TRIM(textmebot_apikey) != ''
+       ORDER BY nombre`
+    );
+  }
+  console.log(`📋 TextMeBot — ${rows.length} número(s) para estación ${estacionId || 'global'}: ${rows.map(r => r.nombre).join(', ')}`);
   return rows;
 }
 
 // ── A todos: texto ─────────────────────────────────────────────────────────
-async function textoATodos(mensaje) {
-  const dests = await destinatarios();
+async function textoATodos(mensaje, estacionId = null) {
+  const dests = await destinatarios(estacionId);
   if (!dests.length) { console.log('⚠️  Sin destinatarios con API Key'); return []; }
   const res = [];
   for (const d of dests) {
@@ -119,8 +137,8 @@ async function textoATodos(mensaje) {
 }
 
 // ── A todos: documento (PDF o imagen — TextMeBot detecta el tipo por la URL) ──
-async function documentoATodos(caption, fileUrl, filename) {
-  const dests = await destinatarios();
+async function documentoATodos(caption, fileUrl, filename, estacionId = null) {
+  const dests = await destinatarios(estacionId);
   if (!dests.length) return [];
   const res = [];
   for (const d of dests) {
@@ -178,14 +196,14 @@ async function notificarAuditoria(auditoria, estacion, auditor, evaluaciones, fo
 
     // 1) Texto
     console.log('📱 [Auditoría] Enviando resumen de texto...');
-    await textoATodos(msg);
+    await textoATodos(msg, estacion.id);
     await wait(9000);
 
     // 2) PDF — incluye las fotos embebidas dentro del documento
     const pdfUrl  = `${APP_URL}/auditorias-v2/${auditoria.id}/pdf-download`;
     const pdfName = `Auditoria-${auditoria.id}.pdf`;
     console.log(`📱 [Auditoría] Enviando PDF (con fotos incluidas): ${pdfUrl}`);
-    await documentoATodos(`📄 Reporte #${auditoria.id} — ${estacion.nombre} — ${fecha}`, pdfUrl, pdfName);
+    await documentoATodos(`📄 Reporte #${auditoria.id} — ${estacion.nombre} — ${fecha}`, pdfUrl, pdfName, estacion.id);
 
     console.log(`✅ Auditoría #${auditoria.id} notificada`);
   } catch (e) { console.error('❌ notificarAuditoria:', e.message); }
@@ -214,14 +232,14 @@ async function notificarTicket(ticket, estacion, asignado, creador, accion = 'cr
     if (ticket.costo_estimado) msg += `\n💰 Costo: L ${ticket.costo_estimado}`;
 
     console.log('📱 [Ticket] Enviando texto...');
-    await textoATodos(msg);
+    await textoATodos(msg, estacion?.id);
 
     if (ticket.foto_evidencia) {
       await wait(9000);
       const url = urlArchivo(ticket.foto_evidencia);
       if (url) {
         console.log(`📱 [Ticket] Foto: ${url}`);
-        await documentoATodos(`📸 Evidencia Ticket #${ticket.id}`, url, `Ticket_${ticket.id}.jpg`);
+        await documentoATodos(`📸 Evidencia Ticket #${ticket.id}`, url, `Ticket_${ticket.id}.jpg`, estacion?.id);
       }
     }
     console.log(`✅ Ticket #${ticket.id} notificado`);
@@ -254,14 +272,14 @@ async function notificarMantenimiento(mant, estacion, tecnico, categoria, evalua
     if (mant.recomendaciones)         msg += `\n💡 ${mant.recomendaciones}`;
 
     console.log('📱 [Mantenimiento] Enviando texto...');
-    await textoATodos(msg);
+    await textoATodos(msg, estacion?.id);
     await wait(9000);
 
     // PDF — incluye las fotos embebidas dentro del documento
     const pdfUrl  = `${APP_URL}/mantenimiento/${mant.id}/pdf-download`;
     const pdfName = `Mantenimiento-${mant.id}.pdf`;
     console.log(`📱 [Mantenimiento] Enviando PDF (con fotos incluidas): ${pdfUrl}`);
-    await documentoATodos(`📄 Reporte #${mant.id} — ${categoria?.nombre||''} — ${fecha}`, pdfUrl, pdfName);
+    await documentoATodos(`📄 Reporte #${mant.id} — ${categoria?.nombre||''} — ${fecha}`, pdfUrl, pdfName, estacion?.id);
 
     console.log(`✅ Mantenimiento #${mant.id} notificado`);
   } catch (e) { console.error('❌ notificarMantenimiento:', e.message); }

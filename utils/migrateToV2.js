@@ -277,6 +277,16 @@ async function migrarAV2() {
       console.log('  ℹ️  area_evaluada ya existe en auditorias_v2');
     }
 
+    // ── MIGRACIÓN: agregar estacion_id a whatsapp_numeros ─────────────────
+    // Permite asignar cada número/API Key a una estación específica.
+    // NULL = recibe notificaciones de TODAS las estaciones (comportamiento anterior)
+    try {
+      await runAsync(`ALTER TABLE whatsapp_numeros ADD COLUMN estacion_id INTEGER REFERENCES estaciones(id) ON DELETE SET NULL`);
+      console.log('✅ Columna estacion_id agregada a whatsapp_numeros');
+    } catch (e) {
+      console.log('  ℹ️  estacion_id ya existe en whatsapp_numeros');
+    }
+
 
     // Insertar números por defecto
     await runAsync(`
