@@ -54,10 +54,18 @@
                   <%= cat.activo ? 'Activa' : 'Inactiva' %>
                 </span>
               </td>
-              <td>
+              <td style="display:flex; gap:6px; flex-wrap:wrap;">
                 <a href="/admin/categorias/<%= cat.id %>/items" class="btn btn-sm btn-secondary" title="Ver ítems">
                   <i class="fas fa-list"></i>
                 </a>
+                <button class="btn btn-sm btn-warning" title="Editar categoría"
+                  onclick="abrirEditar(<%= cat.id %>, '<%= cat.nombre.replace(/'/g, "\\'") %>', '<%= (cat.descripcion||'').replace(/'/g, "\\'") %>', <%= cat.orden %>, <%= cat.activo %>)">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" title="Eliminar categoría"
+                  onclick="eliminarCategoria(<%= cat.id %>, '<%= cat.nombre.replace(/'/g, "\\'") %>')">
+                  <i class="fas fa-trash"></i>
+                </button>
               </td>
             </tr>
             <% }); %>
@@ -99,9 +107,47 @@
     </div>
   </div>
   
+  <!-- Modal: Editar Categoría -->
+  <div id="modal-editar-categoria" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Categoría</h2>
+        <button class="modal-close" onclick="cerrarModal('modal-editar-categoria')">&times;</button>
+      </div>
+      <form id="form-editar-categoria" method="POST">
+        <div class="form-group">
+          <label>Nombre de la Categoría *</label>
+          <input type="text" id="edit-nombre" name="nombre" required class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea id="edit-descripcion" name="descripcion" class="form-control" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Orden</label>
+          <input type="number" id="edit-orden" name="orden" min="1" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="edit-activo" name="activo">
+            Categoría Activa
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-editar-categoria')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <%- include('../partials/footer') %>
   <script src="/js/main.js"></script>
-  
+
   <script>
   // Abrir modal de nueva categoría
   document.querySelectorAll('[data-toggle-modal="nueva-categoria"]').forEach(btn => {
@@ -109,18 +155,44 @@
       document.getElementById('modal-nueva-categoria').style.display = 'flex';
     });
   });
-  
+
   // Cerrar modal
   function cerrarModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
   }
-  
+
   // Cerrar modal al hacer clic fuera
   window.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal')) {
       e.target.style.display = 'none';
     }
   });
+
+  // Abrir modal de editar con los datos de la categoría
+  function abrirEditar(id, nombre, descripcion, orden, activo) {
+    document.getElementById('edit-nombre').value      = nombre;
+    document.getElementById('edit-descripcion').value = descripcion;
+    document.getElementById('edit-orden').value       = orden;
+    document.getElementById('edit-activo').checked    = activo === 1;
+    document.getElementById('form-editar-categoria').action = `/admin/categorias/${id}/editar`;
+    document.getElementById('modal-editar-categoria').style.display = 'flex';
+  }
+
+  // Eliminar categoría con confirmación
+  async function eliminarCategoria(id, nombre) {
+    if (!confirm(`¿Estás seguro de eliminar la categoría "${nombre}"?\n\nEsta acción también eliminará todos sus ítems y no se puede deshacer.`)) return;
+    try {
+      const r = await fetch(`/admin/categorias/${id}`, { method: 'DELETE' });
+      const data = await r.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('❌ Error al eliminar: ' + data.mensaje);
+      }
+    } catch (e) {
+      alert('❌ Error de conexión al eliminar la categoría.');
+    }
+  }
   </script>
 </body>
 </html>
