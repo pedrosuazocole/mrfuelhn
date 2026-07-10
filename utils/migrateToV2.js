@@ -292,7 +292,6 @@ async function migrarAV2() {
     } catch (e) {
       console.log('  ℹ️  whatsapp_numero ya existe en usuarios');
     }
-    }
 
     // ── MIGRACIÓN: agregar estacion_id a whatsapp_numeros ─────────────────
     // Permite asignar cada número/API Key a una estación específica.
