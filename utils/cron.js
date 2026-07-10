@@ -12,6 +12,7 @@ const {
   enviarReporteMantenimientos,
   enviarReporteTickets,
   enviarRecordatorioAuditorias,
+  enviarRecordatoriosPorEstacion,
 } = require('./reportesDiarios');
 
 // Configurar timezone
@@ -151,16 +152,29 @@ const reenviarRecordatoriosFallidos = () => {
 };
 
 /**
- * Recordatorio de auditorías pendientes — todos los días a las 8:00 AM
+ * Recordatorio matutino (9:00 AM) — por estación, supervisores + copia a admins
  */
 const programarRecordatorioAuditorias = () => {
-  // 0 8 * * *  (8:00 AM, todos los días)
-  cron.schedule('0 8 * * *', async () => {
-    console.log('\n⏰ [Cron] Enviando recordatorio de auditorías (8:00 AM)...');
+  cron.schedule('0 9 * * *', async () => {
+    console.log('\n⏰ [Cron] Recordatorio matutino de auditorías (9:00 AM)...');
     try {
-      await enviarRecordatorioAuditorias();
+      await enviarRecordatoriosPorEstacion(false); // urgente = false
     } catch (error) {
-      console.error('❌ Error en recordatorio de auditorías:', error.message);
+      console.error('❌ Error en recordatorio matutino:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
+ * Recordatorio urgente (3:00 PM) — solo estaciones que siguen pendientes
+ */
+const programarRecordatorioUrgenteAuditorias = () => {
+  cron.schedule('0 15 * * *', async () => {
+    console.log('\n⏰ [Cron] Recordatorio URGENTE de auditorías (3:00 PM)...');
+    try {
+      await enviarRecordatoriosPorEstacion(true); // urgente = true
+    } catch (error) {
+      console.error('❌ Error en recordatorio urgente:', error.message);
     }
   }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
 };
@@ -218,11 +232,13 @@ const iniciarCronJobs = () => {
   programarRecordatoriosSemanales();
   reenviarRecordatoriosFallidos();
   programarRecordatorioAuditorias();
+  programarRecordatorioUrgenteAuditorias();
   programarReporteAuditorias();
   programarReporteMantenimientos();
   programarReporteTickets();
-  console.log('📅 Recordatorio de auditorías por WhatsApp: 8:00am');
-  console.log('📅 Reportes diarios por WhatsApp programados: 2:00pm (auditorías), 5:00pm (mantenimiento), 7:00pm (tickets)');
+  console.log('📅 Recordatorio matutino por estación:  9:00 AM (supervisores + copia admins)');
+  console.log('📅 Recordatorio urgente por estación:   3:00 PM (supervisores + copia admins)');
+  console.log('📅 Reportes diarios: 2:00 PM (auditorías), 5:00 PM (mantenimiento), 7:00 PM (tickets)');
   console.log('✅ Cron jobs activados\n');
 };
 

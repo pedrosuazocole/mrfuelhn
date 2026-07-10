@@ -12,7 +12,7 @@
  */
 
 const moment = require('moment-timezone');
-const { allAsync } = require('../config/database');
+const { allAsync, getAsync } = require('../config/database');
 const { textoATodos } = require('./textmebot');
 
 const TZ = process.env.TZ || 'America/Tegucigalpa';
@@ -224,4 +224,146 @@ module.exports = {
   enviarReporteMantenimientos,
   enviarReporteTickets,
   enviarRecordatorioAuditorias,
+  enviarRecordatoriosPorEstacion,
 };
+
+// ── Recordatorios por estación: supervisores + copia a gerentes/admins ────
+// Se llama dos veces al día (9:00 AM y 3:00 PM).
+// - supervisores de cada estación reciben recordatorio solo de su estación
+// - admins/gerentes reciben una copia con el resumen de TODAS las pendientes
+async function enviarRecordatoriosPorEstacion(urgente = false) {
+  const fechaHoy   = moment().tz(TZ).format('YYYY-MM-DD');
+  const fechaTexto = moment().tz(TZ).format('DD/MM/YYYY');
+  const horaTexto  = moment().tz(TZ).format('hh:mm A');
+
+  // Estaciones que NO tienen auditoría hoy
+  const pendientes = await allAsync(`
+    SELECT e.id, e.nombre, e.whatsapp_apikey
+    FROM estaciones e
+    WHERE e.activo = 1
+      AND e.id NOT IN (
+        SELECT estacion_id FROM auditorias_v2 WHERE fecha_visita = ?
+      )
+    ORDER BY e.nombre
+  `, [fechaHoy]);
+
+  if (pendientes.length === 0) {
+    console.log('✅ [Recordatorio] Todas las estaciones ya tienen auditoría hoy. No se envían recordatorios.');
+    return;
+  }
+
+  // ── 1. Enviar a supervisores de cada estación pendiente ──────────────
+  for (const estacion of pendientes) {
+    // Supervisores asignados a esta estación con número WhatsApp
+    const supervisores = await allAsync(`
+      SELECT nombre, whatsapp_numero
+      FROM usuarios
+      WHERE activo = 1
+        AND estacion_id = ?
+        AND rol IN ('supervisor', 'supervisor_pista')
+        AND whatsapp_numero IS NOT NULL
+        AND TRIM(whatsapp_numero) != ''
+    `, [estacion.id]);
+
+    if (supervisores.length === 0) {
+      console.log(`⚠️  Sin supervisores con WhatsApp en ${estacion.nombre}`);
+      continue;
+    }
+
+    // Mensaje para el supervisor de la estación
+    let msg;
+    if (!urgente) {
+      msg = `⏰ *RECORDATORIO DE AUDITORÍA — ${fechaTexto}*\n\n`
+          + `Buenos días. Se les recuerda realizar la auditoría de hoy en:\n\n`
+          + `📍 *${estacion.nombre}*\n\n`
+          + `Por favor registrar la auditoría antes del mediodía.\n`
+          + `🕘 ${horaTexto} | Mr. Fuel v2.0`;
+    } else {
+      msg = `🚨 *AUDITORÍA PENDIENTE — URGENTE — ${fechaTexto}*\n\n`
+          + `⚠️ Hasta las ${horaTexto} la estación *${estacion.nombre}* NO tiene auditoría registrada.\n\n`
+          + `❗ Se requiere completar la auditoría de inmediato.\n\n`
+          + `Por favor ingresar al sistema y registrar la auditoría ahora.\n`
+          + `📲 fuelhn.up.railway.app\n`
+          + `🕒 ${horaTexto} | Mr. Fuel v2.0`;
+    }
+
+    // Obtener apikey remitente de la estación (o fallback global)
+    let apikeyRemitente = null;
+    if (estacion.whatsapp_apikey) {
+      apikeyRemitente = estacion.whatsapp_apikey;
+    } else {
+      const global = await getAsync(
+        `SELECT textmebot_apikey FROM whatsapp_numeros WHERE activo = 1 AND textmebot_apikey IS NOT NULL AND TRIM(textmebot_apikey) != '' ORDER BY id LIMIT 1`
+      );
+      if (global) apikeyRemitente = global.textmebot_apikey;
+    }
+
+    if (!apikeyRemitente) {
+      console.log(`⚠️  Sin API Key disponible para ${estacion.nombre}`);
+      continue;
+    }
+
+    for (const sup of supervisores) {
+      try {
+        const numero = sup.whatsapp_numero.replace(/[^0-9+]/g, '');
+        const recipient = encodeURIComponent(numero);
+        const url = `https://api.textmebot.com/send.php?recipient=${recipient}&apikey=${apikeyRemitente}&text=${encodeURIComponent(msg)}`;
+        const resp = await fetch(url);
+        const texto = await resp.text();
+        console.log(`📤 Recordatorio${urgente ? ' URGENTE' : ''} → ${sup.nombre} (${estacion.nombre}): ${texto.substring(0, 50)}`);
+        await new Promise(r => setTimeout(r, 9000));
+      } catch (e) {
+        console.error(`❌ Error enviando a ${sup.nombre}:`, e.message);
+      }
+    }
+  }
+
+  // ── 2. Copia a admins y gerentes: resumen de TODAS las pendientes ─────
+  const admins = await allAsync(`
+    SELECT nombre, whatsapp_numero
+    FROM usuarios
+    WHERE activo = 1
+      AND rol IN ('admin', 'gerente')
+      AND whatsapp_numero IS NOT NULL
+      AND TRIM(whatsapp_numero) != ''
+  `);
+
+  if (admins.length === 0) {
+    console.log('ℹ️  Sin admins/gerentes con WhatsApp para la copia.');
+    return;
+  }
+
+  // Construir resumen de pendientes para el admin
+  let resumen;
+  if (!urgente) {
+    resumen = `📋 *RESUMEN RECORDATORIOS AUDITORÍAS — ${fechaTexto}*\n\n`
+            + `🕘 ${horaTexto} — Estaciones sin auditoría registrada:\n\n`;
+  } else {
+    resumen = `🚨 *ALERTA AUDITORÍAS PENDIENTES — ${fechaTexto}*\n\n`
+            + `🕒 ${horaTexto} — Las siguientes estaciones AÚN no tienen auditoría:\n\n`;
+  }
+  for (const e of pendientes) {
+    resumen += `📍 ${e.nombre}\n`;
+  }
+  resumen += `\nTotal pendientes: ${pendientes.length} de ${(await allAsync('SELECT id FROM estaciones WHERE activo = 1')).length} estaciones.`;
+
+  // Usar primer apikey global disponible para enviar a admins
+  const globalKey = await getAsync(
+    `SELECT textmebot_apikey FROM whatsapp_numeros WHERE activo = 1 AND textmebot_apikey IS NOT NULL AND TRIM(textmebot_apikey) != '' ORDER BY id LIMIT 1`
+  );
+  if (!globalKey) return;
+
+  for (const admin of admins) {
+    try {
+      const numero = admin.whatsapp_numero.replace(/[^0-9+]/g, '');
+      const recipient = encodeURIComponent(numero);
+      const url = `https://api.textmebot.com/send.php?recipient=${recipient}&apikey=${globalKey.textmebot_apikey}&text=${encodeURIComponent(resumen)}`;
+      const resp = await fetch(url);
+      const texto = await resp.text();
+      console.log(`📤 Copia admin → ${admin.nombre}: ${texto.substring(0, 50)}`);
+      await new Promise(r => setTimeout(r, 9000));
+    } catch (e) {
+      console.error(`❌ Error enviando copia a ${admin.nombre}:`, e.message);
+    }
+  }
+}
