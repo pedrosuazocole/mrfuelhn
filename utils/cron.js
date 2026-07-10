@@ -13,6 +13,7 @@ const {
   enviarReporteTickets,
   enviarRecordatorioAuditorias,
   enviarRecordatoriosPorEstacion,
+  enviarRecordatorioMantenimiento,
 } = require('./reportesDiarios');
 
 // Configurar timezone
@@ -225,6 +226,38 @@ const programarReporteTickets = () => {
 };
 
 /**
+ * Mantenimiento semanal — Viernes 3:00 PM
+ * Estaciones: Circunvalación, Polvorín, 105
+ */
+const programarMantenimientoViernes = () => {
+  // 0 15 * * 5  → 3:00 PM todos los viernes
+  cron.schedule('0 15 * * 5', async () => {
+    console.log('\n⏰ [Cron] Recordatorio mantenimiento semanal — Viernes 3:00 PM...');
+    try {
+      await enviarRecordatorioMantenimiento(['circunvalación', 'polvorin', '105']);
+    } catch (error) {
+      console.error('❌ Error en recordatorio mantenimiento viernes:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
+ * Mantenimiento semanal — Lunes 1:00 PM
+ * Estaciones: Buenos Aires
+ */
+const programarMantenimientoLunes = () => {
+  // 0 13 * * 1  → 1:00 PM todos los lunes
+  cron.schedule('0 13 * * 1', async () => {
+    console.log('\n⏰ [Cron] Recordatorio mantenimiento semanal — Lunes 1:00 PM...');
+    try {
+      await enviarRecordatorioMantenimiento(['buenos aires']);
+    } catch (error) {
+      console.error('❌ Error en recordatorio mantenimiento lunes:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
  * Iniciar todos los cron jobs
  */
 const iniciarCronJobs = () => {
@@ -236,8 +269,12 @@ const iniciarCronJobs = () => {
   programarReporteAuditorias();
   programarReporteMantenimientos();
   programarReporteTickets();
-  console.log('📅 Recordatorio matutino por estación:  9:00 AM (supervisores + copia admins)');
-  console.log('📅 Recordatorio urgente por estación:   3:00 PM (supervisores + copia admins)');
+  programarMantenimientoViernes();
+  programarMantenimientoLunes();
+  console.log('📅 Recordatorio matutino auditorías:        9:00 AM (supervisores + admins)');
+  console.log('📅 Recordatorio urgente auditorías:         3:00 PM (supervisores + admins)');
+  console.log('📅 Mantenimiento semanal Circunv/Polv/105:  Viernes 3:00 PM');
+  console.log('📅 Mantenimiento semanal Buenos Aires:      Lunes 1:00 PM');
   console.log('📅 Reportes diarios: 2:00 PM (auditorías), 5:00 PM (mantenimiento), 7:00 PM (tickets)');
   console.log('✅ Cron jobs activados\n');
 };

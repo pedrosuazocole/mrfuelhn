@@ -225,6 +225,7 @@ module.exports = {
   enviarReporteTickets,
   enviarRecordatorioAuditorias,
   enviarRecordatoriosPorEstacion,
+  enviarRecordatorioMantenimiento,
 };
 
 // ── Recordatorios por estación: supervisores + copia a gerentes/admins ────
@@ -364,6 +365,114 @@ async function enviarRecordatoriosPorEstacion(urgente = false) {
       await new Promise(r => setTimeout(r, 9000));
     } catch (e) {
       console.error(`❌ Error enviando copia a ${admin.nombre}:`, e.message);
+    }
+  }
+}
+
+// ── Recordatorio de mantenimiento semanal por estaciones ─────────────────
+// estacionNombres: array con los nombres exactos de las estaciones a notificar
+// Envía a técnicos/supervisores asignados a cada estación + copia a admins
+async function enviarRecordatorioMantenimiento(estacionNombres = []) {
+  const fechaTexto = moment().tz(TZ).format('DD/MM/YYYY');
+  const horaTexto  = moment().tz(TZ).format('hh:mm A');
+
+  // Buscar estaciones por nombre (comparación flexible, sin importar mayúsculas)
+  const estaciones = await allAsync(
+    `SELECT id, nombre, whatsapp_apikey
+     FROM estaciones
+     WHERE activo = 1
+       AND (${estacionNombres.map(() => 'LOWER(nombre) LIKE ?').join(' OR ')})`,
+    estacionNombres.map(n => `%${n.toLowerCase()}%`)
+  );
+
+  if (estaciones.length === 0) {
+    console.log('⚠️  [Mantenimiento] No se encontraron estaciones para el recordatorio.');
+    return;
+  }
+
+  // Apikey global de fallback
+  const globalKey = await getAsync(
+    `SELECT textmebot_apikey FROM whatsapp_numeros
+     WHERE activo = 1 AND textmebot_apikey IS NOT NULL AND TRIM(textmebot_apikey) != ''
+     ORDER BY id LIMIT 1`
+  );
+
+  // ── 1. Enviar a técnicos/supervisores de cada estación ───────────────
+  for (const estacion of estaciones) {
+    const destinatarios = await allAsync(
+      `SELECT nombre, whatsapp_numero
+       FROM usuarios
+       WHERE activo = 1
+         AND estacion_id = ?
+         AND rol IN ('tecnico', 'supervisor', 'supervisor_pista', 'responsable_mantenimiento')
+         AND whatsapp_numero IS NOT NULL
+         AND TRIM(whatsapp_numero) != ''`,
+      [estacion.id]
+    );
+
+    if (destinatarios.length === 0) {
+      console.log(`⚠️  Sin técnicos/supervisores con WhatsApp en ${estacion.nombre}`);
+      continue;
+    }
+
+    const msg = `🔧 *RECORDATORIO DE MANTENIMIENTO SEMANAL*\n\n`
+              + `📍 Estación: *${estacion.nombre}*\n`
+              + `📅 Fecha: ${fechaTexto}\n`
+              + `🕒 ${horaTexto}\n\n`
+              + `Se les recuerda realizar el *mantenimiento semanal* programado para hoy.\n\n`
+              + `Por favor registrar el mantenimiento en el sistema al finalizar.\n`
+              + `📲 fuelhn.up.railway.app\n`
+              + `🔧 Mr. Fuel v2.0`;
+
+    const apikey = estacion.whatsapp_apikey || globalKey?.textmebot_apikey;
+    if (!apikey) {
+      console.log(`⚠️  Sin API Key para ${estacion.nombre}`);
+      continue;
+    }
+
+    for (const dest of destinatarios) {
+      try {
+        const numero    = dest.whatsapp_numero.replace(/[^0-9+]/g, '');
+        const recipient = encodeURIComponent(numero);
+        const url = `https://api.textmebot.com/send.php?recipient=${recipient}&apikey=${apikey}&text=${encodeURIComponent(msg)}`;
+        const resp  = await fetch(url);
+        const texto = await resp.text();
+        console.log(`📤 Mant. semanal → ${dest.nombre} (${estacion.nombre}): ${texto.substring(0, 50)}`);
+        await new Promise(r => setTimeout(r, 9000));
+      } catch (e) {
+        console.error(`❌ Error enviando a ${dest.nombre}:`, e.message);
+      }
+    }
+  }
+
+  // ── 2. Copia resumen a admins/gerentes ────────────────────────────────
+  const admins = await allAsync(
+    `SELECT nombre, whatsapp_numero
+     FROM usuarios
+     WHERE activo = 1
+       AND rol IN ('admin', 'gerente')
+       AND whatsapp_numero IS NOT NULL
+       AND TRIM(whatsapp_numero) != ''`
+  );
+
+  if (!admins.length || !globalKey) return;
+
+  const resumen = `📋 *RECORDATORIO MANTENIMIENTO SEMANAL — ${fechaTexto}*\n\n`
+                + `Estaciones programadas para mantenimiento hoy:\n\n`
+                + estaciones.map(e => `🔧 ${e.nombre}`).join('\n')
+                + `\n\n🕒 ${horaTexto} | Mr. Fuel v2.0`;
+
+  for (const admin of admins) {
+    try {
+      const numero    = admin.whatsapp_numero.replace(/[^0-9+]/g, '');
+      const recipient = encodeURIComponent(numero);
+      const url = `https://api.textmebot.com/send.php?recipient=${recipient}&apikey=${globalKey.textmebot_apikey}&text=${encodeURIComponent(resumen)}`;
+      const resp  = await fetch(url);
+      const texto = await resp.text();
+      console.log(`📤 Copia mant. → ${admin.nombre}: ${texto.substring(0, 50)}`);
+      await new Promise(r => setTimeout(r, 9000));
+    } catch (e) {
+      console.error(`❌ Error copia admin ${admin.nombre}:`, e.message);
     }
   }
 }
