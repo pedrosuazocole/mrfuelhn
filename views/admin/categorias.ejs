@@ -37,6 +37,7 @@
               <th>Orden</th>
               <th>Nombre</th>
               <th>Descripción</th>
+              <th>Estación</th>
               <th>Ítems</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -48,18 +49,29 @@
               <td><strong><%= cat.orden %></strong></td>
               <td><%= cat.nombre %></td>
               <td><%= cat.descripcion || '-' %></td>
+              <td>
+                <% if (cat.estacion_nombre) { %>
+                  <span class="badge badge-info">
+                    <i class="fas fa-gas-pump"></i> <%= cat.estacion_nombre %>
+                  </span>
+                <% } else { %>
+                  <span class="badge badge-secondary" title="Aplica a todas las estaciones">
+                    <i class="fas fa-globe"></i> Todas
+                  </span>
+                <% } %>
+              </td>
               <td><%= cat.total_items %> (<%= cat.items_activos %> activos)</td>
               <td>
                 <span class="badge <%= cat.activo ? 'badge-success' : 'badge-danger' %>">
                   <%= cat.activo ? 'Activa' : 'Inactiva' %>
                 </span>
               </td>
-              <td style="display:flex; gap:6px; flex-wrap:wrap;">
+              <td>
                 <a href="/admin/categorias/<%= cat.id %>/items" class="btn btn-sm btn-secondary" title="Ver ítems">
                   <i class="fas fa-list"></i>
                 </a>
                 <button class="btn btn-sm btn-warning" title="Editar categoría"
-                  onclick="abrirEditar(<%= cat.id %>, '<%= cat.nombre.replace(/'/g, "\\'") %>', '<%= (cat.descripcion||'').replace(/'/g, "\\'") %>', <%= cat.orden %>, <%= cat.activo %>)">
+                  onclick="abrirEditar(<%= cat.id %>, '<%= cat.nombre.replace(/'/g, "\\'") %>', '<%= (cat.descripcion||'').replace(/'/g, "\\'") %>', <%= cat.orden %>, <%= cat.activo %>, <%= cat.estacion_id || 'null' %>)">
                   <i class="fas fa-edit"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" title="Eliminar categoría"
@@ -98,7 +110,20 @@
           <input type="number" name="orden" value="<%= categorias.length + 1 %>" min="1" class="form-control">
           <small class="form-text">Orden en que aparecerá la categoría en las auditorías</small>
         </div>
-        
+
+        <div class="form-group">
+          <label><i class="fas fa-gas-pump"></i> Estación de Servicio</label>
+          <select name="estacion_id" class="form-control">
+            <option value="">— Todas las estaciones —</option>
+            <% estaciones.forEach(est => { %>
+              <option value="<%= est.id %>"><%= est.nombre %></option>
+            <% }); %>
+          </select>
+          <small class="form-text">
+            Asigná este checklist a una estación específica, o dejalo en blanco para que aplique a todas.
+          </small>
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-nueva-categoria')">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar Categoría</button>
@@ -106,7 +131,7 @@
       </form>
     </div>
   </div>
-  
+
   <!-- Modal: Editar Categoría -->
   <div id="modal-editar-categoria" class="modal" style="display: none;">
     <div class="modal-content">
@@ -128,6 +153,17 @@
         <div class="form-group">
           <label>Orden</label>
           <input type="number" id="edit-orden" name="orden" min="1" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label><i class="fas fa-gas-pump"></i> Estación de Servicio</label>
+          <select id="edit-estacion" name="estacion_id" class="form-control">
+            <option value="">— Todas las estaciones —</option>
+            <% estaciones.forEach(est => { %>
+              <option value="<%= est.id %>"><%= est.nombre %></option>
+            <% }); %>
+          </select>
+          <small class="form-text">Dejá en blanco para que aplique a todas las estaciones.</small>
         </div>
 
         <div class="form-group">
@@ -168,21 +204,22 @@
     }
   });
 
-  // Abrir modal de editar con los datos de la categoría
-  function abrirEditar(id, nombre, descripcion, orden, activo) {
+  // Abrir modal editar con datos precargados
+  function abrirEditar(id, nombre, descripcion, orden, activo, estacionId) {
     document.getElementById('edit-nombre').value      = nombre;
     document.getElementById('edit-descripcion').value = descripcion;
     document.getElementById('edit-orden').value       = orden;
     document.getElementById('edit-activo').checked    = activo === 1;
+    document.getElementById('edit-estacion').value    = estacionId || '';
     document.getElementById('form-editar-categoria').action = `/admin/categorias/${id}/editar`;
     document.getElementById('modal-editar-categoria').style.display = 'flex';
   }
 
-  // Eliminar categoría con confirmación
+  // Eliminar categoría
   async function eliminarCategoria(id, nombre) {
     if (!confirm(`¿Estás seguro de eliminar la categoría "${nombre}"?\n\nEsta acción también eliminará todos sus ítems y no se puede deshacer.`)) return;
     try {
-      const r = await fetch(`/admin/categorias/${id}`, { method: 'DELETE' });
+      const r = await fetch(`/admin/categorias/${id}`, { method: 'DELETE', credentials: 'include' });
       const data = await r.json();
       if (data.success) {
         location.reload();
