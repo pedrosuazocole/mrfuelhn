@@ -11,20 +11,25 @@ const { getAsync, allAsync, runAsync } = require('../config/database');
 exports.listarCategorias = async (req, res) => {
   try {
     const categorias = await allAsync(`
-      SELECT c.*, 
+      SELECT c.*,
+             e.nombre AS estacion_nombre,
              COUNT(i.id) as total_items,
              COUNT(CASE WHEN i.activo = 1 THEN 1 END) as items_activos
       FROM categorias c
+      LEFT JOIN estaciones e ON c.estacion_id = e.id
       LEFT JOIN items_auditoria i ON c.id = i.categoria_id
       WHERE c.nombre NOT IN ('BODEGA', 'COCINA')
       GROUP BY c.id
       ORDER BY c.orden ASC
     `);
 
+    const estaciones = await allAsync('SELECT id, nombre FROM estaciones WHERE activo = 1 ORDER BY nombre');
+
     res.render('admin/categorias', {
       user: req.session,
       titulo: 'Gestión de Checklist',
-      categorias
+      categorias,
+      estaciones
     });
   } catch (error) {
     console.error('Error:', error);
@@ -67,13 +72,13 @@ exports.verItems = async (req, res) => {
  */
 exports.agregarCategoria = async (req, res) => {
   try {
-    const { nombre, descripcion, orden } = req.body;
-    
+    const { nombre, descripcion, orden, estacion_id } = req.body;
+
     await runAsync(
-      'INSERT INTO categorias (nombre, descripcion, orden) VALUES (?, ?, ?)',
-      [nombre, descripcion || null, parseInt(orden) || 0]
+      'INSERT INTO categorias (nombre, descripcion, orden, estacion_id) VALUES (?, ?, ?, ?)',
+      [nombre, descripcion || null, parseInt(orden) || 0, estacion_id || null]
     );
-    
+
     res.redirect('/admin/categorias');
   } catch (error) {
     console.error('Error:', error);
@@ -114,14 +119,14 @@ exports.agregarItem = async (req, res) => {
 exports.editarCategoria = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, orden, activo } = req.body;
-    
+    const { nombre, descripcion, orden, activo, estacion_id } = req.body;
+
     await runAsync(`
-      UPDATE categorias 
-      SET nombre = ?, descripcion = ?, orden = ?, activo = ?
+      UPDATE categorias
+      SET nombre = ?, descripcion = ?, orden = ?, activo = ?, estacion_id = ?
       WHERE id = ?
-    `, [nombre, descripcion, parseInt(orden), activo === 'on' ? 1 : 0, id]);
-    
+    `, [nombre, descripcion, parseInt(orden), activo === 'on' ? 1 : 0, estacion_id || null, id]);
+
     res.redirect('/admin/categorias');
   } catch (error) {
     console.error('Error:', error);

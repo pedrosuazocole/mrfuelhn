@@ -138,31 +138,52 @@ exports.crearAuditoria = async (req, res) => {
     
     // OBTENER ÍTEMS DEL ÁREA SELECCIONADA ÚNICAMENTE
     let itemsDelArea = [];
-    
+
     if (area_evaluada === 'pista') {
-      // Solo ítems de PISTA
-      const categoriaPista = await getAsync("SELECT id FROM categorias WHERE nombre = 'PISTA'");
-      if (categoriaPista) {
+      // Ítems de PISTA: categoría global PISTA + categorías de PISTA asignadas a esta estación
+      const categoriasPista = await allAsync(
+        `SELECT id FROM categorias
+         WHERE nombre = 'PISTA' AND activo = 1
+           AND (estacion_id IS NULL OR estacion_id = ?)`,
+        [estacion_id]
+      );
+      const ids = categoriasPista.map(c => c.id);
+      if (ids.length > 0) {
         itemsDelArea = await allAsync(
-          'SELECT id FROM items_auditoria WHERE categoria_id = ? AND activo = 1',
-          [categoriaPista.id]
+          `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
         );
       }
     } else if (area_evaluada === 'tienda') {
-      // Ítems de TIENDA únicamente
+      // Ítems de TIENDA: categoría global TIENDA + categorías de TIENDA asignadas a esta estación
       const categoriasTienda = await allAsync(
-        "SELECT id FROM categorias WHERE nombre = 'TIENDA'"
+        `SELECT id FROM categorias
+         WHERE nombre = 'TIENDA' AND activo = 1
+           AND (estacion_id IS NULL OR estacion_id = ?)`,
+        [estacion_id]
       );
-      const categoriaIds = categoriasTienda.map(c => c.id);
-      // Proteger contra IN() vacío — SQLite lo rechaza
-      if (categoriaIds.length > 0) {
+      const ids = categoriasTienda.map(c => c.id);
+      if (ids.length > 0) {
         itemsDelArea = await allAsync(
-          `SELECT id FROM items_auditoria WHERE categoria_id IN (${categoriaIds.join(',')}) AND activo = 1`
+          `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
+        );
+      }
+    } else {
+      // Área personalizada: buscar categorías por nombre del área asignadas a esta estación o globales
+      const categoriasArea = await allAsync(
+        `SELECT id FROM categorias
+         WHERE LOWER(nombre) LIKE ? AND activo = 1
+           AND (estacion_id IS NULL OR estacion_id = ?)`,
+        [`%${area_evaluada.toLowerCase()}%`, estacion_id]
+      );
+      const ids = categoriasArea.map(c => c.id);
+      if (ids.length > 0) {
+        itemsDelArea = await allAsync(
+          `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
         );
       }
     }
-    
-    console.log(`📋 Total ítems en área ${area_evaluada}:`, itemsDelArea.length);
+
+    console.log(`📋 Total ítems en área ${area_evaluada} para estación ${estacion_id}:`, itemsDelArea.length);
     
     // Calcular estadísticas SOLO con ítems del área seleccionada
     const idsDelArea = itemsDelArea.map(item => item.id.toString());
