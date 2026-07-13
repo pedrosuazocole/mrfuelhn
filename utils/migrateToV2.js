@@ -277,20 +277,14 @@ async function migrarAV2() {
       console.log('  ℹ️  area_evaluada ya existe en auditorias_v2');
     }
 
-    // ── MIGRACIÓN: estacion_id y whatsapp_numero en usuarios ─────────────
-    // estacion_id → estación asignada al supervisor (para recordatorios por estación)
-    // whatsapp_numero → número de WhatsApp del usuario para recibir recordatorios
+    // ── MIGRACIÓN: estacion_id en categorias ──────────────────────────────
+    // Permite asignar un checklist a una estación específica.
+    // NULL = aplica a todas las estaciones (comportamiento anterior)
     try {
-      await runAsync(`ALTER TABLE usuarios ADD COLUMN estacion_id INTEGER REFERENCES estaciones(id) ON DELETE SET NULL`);
-      console.log('✅ Columna estacion_id agregada a usuarios');
+      await runAsync(`ALTER TABLE categorias ADD COLUMN estacion_id INTEGER REFERENCES estaciones(id) ON DELETE SET NULL`);
+      console.log('✅ Columna estacion_id agregada a categorias');
     } catch (e) {
-      console.log('  ℹ️  estacion_id ya existe en usuarios');
-    }
-    try {
-      await runAsync(`ALTER TABLE usuarios ADD COLUMN whatsapp_numero TEXT`);
-      console.log('✅ Columna whatsapp_numero agregada a usuarios');
-    } catch (e) {
-      console.log('  ℹ️  whatsapp_numero ya existe en usuarios');
+      console.log('  ℹ️  estacion_id ya existe en categorias');
     }
 
     // ── MIGRACIÓN: agregar estacion_id a whatsapp_numeros ─────────────────
