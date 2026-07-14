@@ -277,7 +277,8 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div class="form-group">
             <label for="estacion_id">Estación *</label>
-            <select name="estacion_id" id="estacion_id" class="form-control" required>
+            <select name="estacion_id" id="estacion_id" class="form-control" required
+                    onchange="filtrarAreasPorEstacion(this.value)">
               <option value="">Seleccionar estación...</option>
               <% estaciones.forEach(est => { %>
                 <option value="<%= est.id %>"><%= est.nombre %> (<%= est.codigo %>)</option>
@@ -303,18 +304,37 @@
       <div class="card">
         <div class="card-header">🎯 Selecciona el Área a Evaluar</div>
         <div style="padding: 20px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <button type="button" class="btn-selector" onclick="seleccionarArea('pista')" id="btn-pista">
-              <i class="fas fa-gas-pump" style="font-size: 32px; margin-bottom: 10px;"></i>
-              <div style="font-size: 20px; font-weight: bold;">PISTA</div>
-              <div style="font-size: 14px; opacity: 0.8;">Evaluar área de pista</div>
+          <p id="msg-seleccionar-estacion" style="color:#888; text-align:center; padding: 10px 0;">
+            <i class="fas fa-info-circle"></i> Primero seleccioná una estación para ver los checklists disponibles.
+          </p>
+
+          <div id="contenedor-areas" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; display: none;">
+            <% grupos.forEach(grupo => { %>
+            <button type="button" class="btn-selector area-btn"
+                    data-area="<%= grupo.id %>"
+                    data-estacion="<%= grupo.estacion_id || '' %>"
+                    onclick="seleccionarArea('<%= grupo.id %>')"
+                    id="btn-<%= grupo.id %>"
+                    style="display: none;">
+              <%
+                let icono = 'fas fa-clipboard-list';
+                const n = grupo.nombre.toUpperCase();
+                if (n.includes('PISTA'))  icono = 'fas fa-gas-pump';
+                if (n.includes('TIENDA')) icono = 'fas fa-store';
+                if (n.includes('COCINA')) icono = 'fas fa-utensils';
+                if (n.includes('BODEGA')) icono = 'fas fa-warehouse';
+              %>
+              <i class="<%= icono %>" style="font-size: 32px; margin-bottom: 10px;"></i>
+              <div style="font-size: 18px; font-weight: bold;"><%= grupo.nombre %></div>
+              <div style="font-size: 13px; opacity: 0.8;"><%= grupo.descripcion %></div>
             </button>
-            <button type="button" class="btn-selector" onclick="seleccionarArea('tienda')" id="btn-tienda">
-              <i class="fas fa-store" style="font-size: 32px; margin-bottom: 10px;"></i>
-              <div style="font-size: 20px; font-weight: bold;">TIENDA</div>
-              <div style="font-size: 14px; opacity: 0.8;">Evaluar tienda</div>
-            </button>
+            <% }); %>
           </div>
+
+          <div id="sin-areas" style="display:none; color:#e53e3e; text-align:center; padding: 10px 0;">
+            <i class="fas fa-exclamation-triangle"></i> Esta estación no tiene checklists configurados aún.
+          </div>
+
           <input type="hidden" name="area_evaluada" id="area_evaluada" required>
         </div>
       </div>
