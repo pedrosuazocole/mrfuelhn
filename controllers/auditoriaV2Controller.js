@@ -50,12 +50,15 @@ exports.mostrarFormularioNueva = async (req, res) => {
     const estaciones = await allAsync(
       'SELECT * FROM estaciones WHERE activo = 1 ORDER BY nombre ASC'
     );
-    
-    // Obtener todas las categorías con sus ítems
+
+    // Obtener todas las categorías activas excluyendo las internas BODEGA/COCINA
     const categorias = await allAsync(
-      'SELECT * FROM categorias WHERE activo = 1 ORDER BY orden ASC'
+      `SELECT * FROM categorias
+       WHERE activo = 1
+         AND nombre NOT IN ('BODEGA', 'COCINA')
+       ORDER BY orden ASC`
     );
-    
+
     // Obtener ítems por cada categoría
     for (let categoria of categorias) {
       categoria.items = await allAsync(
@@ -63,34 +66,18 @@ exports.mostrarFormularioNueva = async (req, res) => {
         [categoria.id]
       );
     }
-    
-    // Crear grupos independientes: PISTA y TIENDA (con sus subcategorías)
-    const grupos = [];
-    
-    // GRUPO 1: PISTA (solo PISTA)
-    const pista = categorias.find(c => c.nombre === 'PISTA');
-    if (pista) {
-      grupos.push({
-        id: 'pista',
-        nombre: 'PISTA',
-        categorias: [pista]
-      });
-    }
-    
-    // GRUPO 2: TIENDA (solo TIENDA)
-    const tienda = categorias.find(c => c.nombre === 'TIENDA');
-    
-    const categoriaTienda = [];
-    if (tienda) categoriaTienda.push(tienda);
-    
-    if (categoriaTienda.length > 0) {
-      grupos.push({
-        id: 'tienda',
-        nombre: 'TIENDA',
-        categorias: categoriaTienda
-      });
-    }
-    
+
+    // Construir grupos dinámicamente desde las categorías
+    // Cada categoría se convierte en un grupo seleccionable en el formulario
+    // El id del grupo es el nombre en minúsculas sin espacios (para area_evaluada)
+    const grupos = categorias.map(cat => ({
+      id:         cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+      nombre:     cat.nombre,
+      descripcion: cat.descripcion || `Evaluar ${cat.nombre.toLowerCase()}`,
+      estacion_id: cat.estacion_id || null,
+      categorias: [cat]
+    }));
+
     res.render('auditorias-v2/nueva', {
       user: req.session,
       titulo: 'Nueva Auditoría',
@@ -139,43 +126,41 @@ exports.crearAuditoria = async (req, res) => {
     // OBTENER ÍTEMS DEL ÁREA SELECCIONADA ÚNICAMENTE
     let itemsDelArea = [];
 
-    if (area_evaluada === 'pista') {
-      // Ítems de PISTA: categoría global PISTA + categorías de PISTA asignadas a esta estación
-      const categoriasPista = await allAsync(
-        `SELECT id FROM categorias
-         WHERE nombre = 'PISTA' AND activo = 1
-           AND (estacion_id IS NULL OR estacion_id = ?)`,
-        [estacion_id]
-      );
-      const ids = categoriasPista.map(c => c.id);
-      if (ids.length > 0) {
-        itemsDelArea = await allAsync(
-          `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
-        );
+    // Buscar la categoría cuyo id dinámico coincide con area_evaluada
+    // El id se genera como: nombre.toLowerCase().replace(/[^a-z0-9]/g, '_')
+    // Buscar por nombre exacto primero, luego por coincidencia aproximada
+    const todasCategorias = await allAsync(
+      `SELECT id, nombre FROM categorias WHERE activo = 1 AND nombre NOT IN ('BODEGA', 'COCINA')`
+    );
+
+    // Encontrar la categoría cuyo id dinámico coincide
+    let categoriaTarget = null;
+    for (const cat of todasCategorias) {
+      const idDinamico = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      if (idDinamico === area_evaluada) {
+        categoriaTarget = cat;
+        break;
       }
-    } else if (area_evaluada === 'tienda') {
-      // Ítems de TIENDA: categoría global TIENDA + categorías de TIENDA asignadas a esta estación
-      const categoriasTienda = await allAsync(
-        `SELECT id FROM categorias
-         WHERE nombre = 'TIENDA' AND activo = 1
-           AND (estacion_id IS NULL OR estacion_id = ?)`,
-        [estacion_id]
+    }
+
+    // Fallback: buscar por nombre parcial (compatibilidad con 'pista' y 'tienda')
+    if (!categoriaTarget) {
+      categoriaTarget = todasCategorias.find(c =>
+        c.nombre.toLowerCase().includes(area_evaluada.toLowerCase()) ||
+        area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
       );
-      const ids = categoriasTienda.map(c => c.id);
-      if (ids.length > 0) {
-        itemsDelArea = await allAsync(
-          `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
-        );
-      }
-    } else {
-      // Área personalizada: buscar categorías por nombre del área asignadas a esta estación o globales
-      const categoriasArea = await allAsync(
+    }
+
+    if (categoriaTarget) {
+      // Incluir también categorías globales del mismo tipo (sin estacion_id) asignadas a esta estación
+      const categoriasRelacionadas = await allAsync(
         `SELECT id FROM categorias
-         WHERE LOWER(nombre) LIKE ? AND activo = 1
-           AND (estacion_id IS NULL OR estacion_id = ?)`,
-        [`%${area_evaluada.toLowerCase()}%`, estacion_id]
+         WHERE activo = 1
+           AND (estacion_id IS NULL OR estacion_id = ?)
+           AND (id = ? OR nombre = ?)`,
+        [estacion_id, categoriaTarget.id, categoriaTarget.nombre]
       );
-      const ids = categoriasArea.map(c => c.id);
+      const ids = categoriasRelacionadas.map(c => c.id);
       if (ids.length > 0) {
         itemsDelArea = await allAsync(
           `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
