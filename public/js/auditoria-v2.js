@@ -2,40 +2,75 @@
  * JAVASCRIPT PARA AUDITORÍA V2.0 - MR. FUEL
  */
 
-// Función para seleccionar área (PISTA o TIENDA)
+// Filtrar tarjetas de área según la estación seleccionada
+function filtrarAreasPorEstacion(estacionId) {
+  const contenedor   = document.getElementById('contenedor-areas');
+  const msgSeleccionar = document.getElementById('msg-seleccionar-estacion');
+  const sinAreas     = document.getElementById('sin-areas');
+  const botones      = document.querySelectorAll('.area-btn');
+
+  // Resetear área seleccionada y grupos
+  document.getElementById('area_evaluada').value = '';
+  document.querySelectorAll('.grupo-categoria').forEach(g => g.style.display = 'none');
+  botones.forEach(b => { b.classList.remove('selected', 'disabled'); });
+
+  if (!estacionId) {
+    contenedor.style.display   = 'none';
+    msgSeleccionar.style.display = 'block';
+    sinAreas.style.display     = 'none';
+    return;
+  }
+
+  msgSeleccionar.style.display = 'none';
+
+  // Mostrar botones: los globales (sin estación) + los de esta estación
+  let visibles = 0;
+  botones.forEach(btn => {
+    const btnEstacion = btn.getAttribute('data-estacion');
+    // Mostrar si es global (sin estación) O si es de esta estación
+    if (btnEstacion === '' || btnEstacion === estacionId) {
+      btn.style.display = 'flex';
+      visibles++;
+    } else {
+      btn.style.display = 'none';
+    }
+  });
+
+  if (visibles > 0) {
+    contenedor.style.display = 'grid';
+    sinAreas.style.display   = 'none';
+  } else {
+    contenedor.style.display = 'none';
+    sinAreas.style.display   = 'block';
+  }
+}
+
+// Seleccionar área y mostrar su checklist
 function seleccionarArea(area) {
   // Ocultar todos los grupos
   document.querySelectorAll('.grupo-categoria').forEach(grupo => {
     grupo.style.display = 'none';
   });
-  
-  // Quitar selección de botones
-  document.querySelectorAll('.btn-selector').forEach(btn => {
-    btn.classList.remove('selected');
-    btn.classList.remove('disabled');
+
+  // Quitar selección de todos los botones visibles
+  document.querySelectorAll('.area-btn').forEach(btn => {
+    btn.classList.remove('selected', 'disabled');
   });
-  
+
   // Marcar botón seleccionado
   const btnSeleccionado = document.getElementById(`btn-${area}`);
-  btnSeleccionado.classList.add('selected');
-  
-  // Bloquear el botón NO seleccionado
-  const otraArea = area === 'pista' ? 'tienda' : 'pista';
-  const btnBloqueado = document.getElementById(`btn-${otraArea}`);
-  btnBloqueado.classList.add('disabled');
-  
+  if (btnSeleccionado) btnSeleccionado.classList.add('selected');
+
   // Mostrar grupo seleccionado
-  document.getElementById(`grupo-${area}`).style.display = 'block';
-  
+  const grupo = document.getElementById(`grupo-${area}`);
+  if (grupo) grupo.style.display = 'block';
+
   // Guardar área evaluada
   document.getElementById('area_evaluada').value = area;
-  
+
   // Scroll suave al checklist
   setTimeout(() => {
-    document.getElementById(`grupo-${area}`).scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'start' 
-    });
+    if (grupo) grupo.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 100);
 }
 
