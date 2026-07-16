@@ -4,6 +4,7 @@
  */
 
 const nodemailer = require('nodemailer');
+const { getAsync } = require('../config/database');
 
 // Detectar servicio de email
 const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'smtp';
