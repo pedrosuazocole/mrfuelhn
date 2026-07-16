@@ -38,7 +38,9 @@ const upload = multer({
     const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     cb(null, allowed.includes(file.mimetype));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }
+  // 20MB por archivo — ver nota en config/multer.js. La compresión post-multer
+  // reduce el tamaño final; este límite solo debe permitir pasar la foto original.
+  limits: { fileSize: 20 * 1024 * 1024 }
 });
 
 // ── Ruta PÚBLICA — PDF para TextMeBot (sin autenticación) ──
@@ -56,7 +58,14 @@ router.get('/nuevo',  ctrl.mostrarFormularioNuevo);
 
 router.post('/nuevo', (req, res, next) => {
   upload.any()(req, res, (err) => {
-    if (err) { console.error('Multer error:', err.message); req.files = []; }
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        console.error('❌ Multer: una foto superó el límite de 20MB — se perdió TODO el lote de fotos de este mantenimiento.');
+      } else {
+        console.error('Multer error:', err.message);
+      }
+      req.files = [];
+    }
     console.log(`📁 Fotos mantenimiento recibidas: ${req.files ? req.files.length : 0}`);
     next();
   });

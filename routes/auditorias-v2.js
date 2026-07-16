@@ -28,7 +28,11 @@ router.get('/nueva', auditoriaV2Controller.mostrarFormularioNueva);
 router.post('/nueva', (req, res, next) => {
   upload.any()(req, res, (err) => {
     if (err) {
-      console.error('❌ Error de multer al subir archivos:', err.message);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        console.error(`❌ Multer: una foto superó el límite de 20MB — se perdió TODO el lote de fotos de esta auditoría.`);
+      } else {
+        console.error('❌ Error de multer al subir archivos:', err.message);
+      }
       // Continuar sin archivos en lugar de fallar
       req.files = [];
     }
