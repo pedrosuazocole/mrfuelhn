@@ -49,7 +49,12 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }
+  // 20MB por archivo — las cámaras de celulares modernos producen fotos de 6-15MB.
+  // El límite anterior (5MB) hacía que Multer abortara TODO el lote de fotos
+  // cuando UNA sola foto lo superaba, perdiendo todas las fotos de la auditoría.
+  // La compresión real ocurre DESPUÉS en comprimirFotos.js (reduce a 150-400KB),
+  // así que este límite solo necesita permitir que las fotos originales pasen.
+  limits: { fileSize: 20 * 1024 * 1024 }
 });
 
 module.exports = upload;
