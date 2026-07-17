@@ -309,9 +309,20 @@ exports.crearAuditoria = async (req, res) => {
     }
 
     // ── CallmeBot: notificación automática WhatsApp ──────────────────────
+    // Guard atómico: solo envía si no se notificó en los últimos 2 minutos.
+    // Evita duplicar el ciclo completo si el botón manual también se dispara.
     if (auditoria && estacion && auditor) {
-      notificarAuditoria(auditoria, estacion, auditor, evaluacionesCompletas, todasLasFotos)
-        .catch(err => console.error('⚠️  TextMeBot auditoría:', err.message));
+      const guard = await runAsync(
+        `UPDATE auditorias_v2 SET whatsapp_notificado_en = datetime('now')
+         WHERE id = ? AND (whatsapp_notificado_en IS NULL OR whatsapp_notificado_en < datetime('now', '-2 minutes'))`,
+        [auditoriaId]
+      );
+      if (guard.changes > 0) {
+        notificarAuditoria(auditoria, estacion, auditor, evaluacionesCompletas, todasLasFotos)
+          .catch(err => console.error('⚠️  TextMeBot auditoría:', err.message));
+      } else {
+        console.log(`ℹ️  Auditoría #${auditoriaId} ya fue notificada recientemente — se omite envío automático duplicado.`);
+      }
     }
     
     console.log(`✅ Auditoría v2 creada: ID ${auditoriaId} - ${estacion ? estacion.nombre : 'N/A'} (${calificacionGeneral}%)`);
@@ -619,6 +630,21 @@ exports.enviarWhatsAppTextMeBot = async (req, res) => {
       return res.status(400).json({
         success: false,
         mensaje: 'No hay números con API Key de TextMeBot configurada. Ve a Configuración → WhatsApp.'
+      });
+    }
+
+    // Guard atómico: evita reenvíos duplicados si ya se notificó hace menos de 2 minutos
+    // (por ejemplo, el envío automático al crear + un clic manual casi inmediato)
+    const guard = await runAsync(
+      `UPDATE auditorias_v2 SET whatsapp_notificado_en = datetime('now')
+       WHERE id = ? AND (whatsapp_notificado_en IS NULL OR whatsapp_notificado_en < datetime('now', '-2 minutes'))`,
+      [id]
+    );
+
+    if (guard.changes === 0) {
+      return res.json({
+        success: true,
+        mensaje: 'Esta auditoría ya fue enviada por WhatsApp hace menos de 2 minutos. Esperá un momento antes de reenviar para evitar duplicados.'
       });
     }
 
