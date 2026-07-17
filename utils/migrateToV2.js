@@ -315,12 +315,78 @@ async function migrarAV2() {
     }
 
 
-    // Insertar números por defecto
-    await runAsync(`
-      INSERT OR IGNORE INTO whatsapp_numeros (nombre, numero, cargo, activo)
-      VALUES ('Supervisor Principal', '+50496978435', 'Supervisor', 1)
-    `);
-    console.log('✅ Número WhatsApp por defecto agregado');
+    // ── MIGRACIÓN CRÍTICA: limpiar duplicados en whatsapp_numeros ──────────
+    // La tabla no tenía restricción UNIQUE en "numero", y el INSERT de más
+    // abajo se ejecutaba en CADA deploy, creando una fila duplicada nueva
+    // cada vez. Esto causaba que un mismo número recibiera la MISMA
+    // auditoría varias veces (una vez por cada fila duplicada).
+    try {
+      const duplicados = await allAsync(`
+        SELECT numero, COUNT(*) as total
+        FROM whatsapp_numeros
+        GROUP BY numero
+        HAVING total > 1
+      `);
+
+      if (duplicados.length > 0) {
+        console.log(`🧹 Limpiando ${duplicados.length} número(s) con filas duplicadas en whatsapp_numeros...`);
+        for (const dup of duplicados) {
+          const filas = await allAsync(
+            'SELECT * FROM whatsapp_numeros WHERE numero = ? ORDER BY id ASC',
+            [dup.numero]
+          );
+          const canonica = filas[0];
+          // Fusionar datos: si la canónica no tiene estacion_id o apikey,
+          // tomarlos de cualquiera de las duplicadas que sí los tenga
+          const estacionId = canonica.estacion_id || filas.find(f => f.estacion_id)?.estacion_id || null;
+          const apikey     = canonica.textmebot_apikey || filas.find(f => f.textmebot_apikey)?.textmebot_apikey || null;
+
+          await runAsync(
+            'UPDATE whatsapp_numeros SET estacion_id = ?, textmebot_apikey = ? WHERE id = ?',
+            [estacionId, apikey, canonica.id]
+          );
+
+          const idsABorrar = filas.slice(1).map(f => f.id);
+          if (idsABorrar.length > 0) {
+            await runAsync(`DELETE FROM whatsapp_numeros WHERE id IN (${idsABorrar.join(',')})`);
+            console.log(`  ✓ ${dup.numero}: ${idsABorrar.length} duplicado(s) eliminado(s), datos fusionados en fila #${canonica.id}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('  ⚠️  Error limpiando duplicados whatsapp_numeros:', e.message);
+    }
+
+    // Prevenir futuros duplicados: índice UNIQUE en numero
+    try {
+      await runAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_whatsapp_numero_unico ON whatsapp_numeros(numero)`);
+      console.log('✅ Índice UNIQUE creado en whatsapp_numeros.numero');
+    } catch (e) {
+      console.log('  ℹ️  Índice UNIQUE ya existe en whatsapp_numeros.numero');
+    }
+
+    // ── MIGRACIÓN: guard anti-doble-envío para auditorías ─────────────────
+    // Evita que la notificación automática (al crear) + un reenvío manual
+    // desde el botón "Enviar por WhatsApp" disparen dos ciclos completos
+    // (texto + PDF) casi al mismo tiempo para la misma auditoría.
+    try {
+      await runAsync(`ALTER TABLE auditorias_v2 ADD COLUMN whatsapp_notificado_en DATETIME`);
+      console.log('✅ Columna whatsapp_notificado_en agregada a auditorias_v2');
+    } catch (e) {
+      console.log('  ℹ️  whatsapp_notificado_en ya existe en auditorias_v2');
+    }
+
+    // Insertar número por defecto — ahora seguro gracias al índice UNIQUE
+    // (INSERT OR IGNORE ahora sí detecta el conflicto y no duplica)
+    try {
+      await runAsync(`
+        INSERT OR IGNORE INTO whatsapp_numeros (nombre, numero, cargo, activo)
+        VALUES ('Supervisor Principal', '+50496978435', 'Supervisor', 1)
+      `);
+      console.log('✅ Número WhatsApp por defecto verificado (sin duplicar)');
+    } catch (e) {
+      console.log('  ℹ️  Número por defecto ya existe:', e.message);
+    }
 
     // 6.2 Crear tabla de tickets de mantenimiento/fallas
     console.log('\n🎫 Creando tabla de tickets...');

@@ -119,6 +119,7 @@ async function destinatarios(estacionId = null) {
        FROM whatsapp_numeros
        WHERE activo = 1
          AND (estacion_id = ? OR estacion_id IS NULL)
+       GROUP BY numero
        ORDER BY nombre`,
       [estacionId]
     );
@@ -127,6 +128,7 @@ async function destinatarios(estacionId = null) {
       `SELECT nombre, numero, textmebot_apikey
        FROM whatsapp_numeros
        WHERE activo = 1
+       GROUP BY numero
        ORDER BY nombre`
     );
   }
