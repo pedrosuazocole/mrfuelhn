@@ -115,7 +115,7 @@
             <select name="categoria_id" id="categoria_id" required class="form-control">
               <option value="">Seleccionar categoría...</option>
               <% categorias.forEach(cat => { %>
-              <option value="<%= cat.id %>"><%= cat.nombre %></option>
+              <option value="<%= cat.id %>" data-estacion="<%= cat.estacion_id || '' %>"><%= cat.nombre %></option>
               <% }); %>
             </select>
           </div>
@@ -293,6 +293,36 @@
       document.getElementById('fecha_visita').value = hoy;
       document.getElementById('hora_visita').value  = hora;
     })();
+
+    // ── Al cargar: ocultar categorías de estación específica hasta elegir estación ──
+    (function () {
+      document.querySelectorAll('#categoria_id option[data-estacion]').forEach(opt => {
+        if (opt.getAttribute('data-estacion') !== '') opt.style.display = 'none';
+      });
+    })();
+
+    // ── Filtrar categorías según la estación seleccionada ─────────────────────
+    // Las categorías con data-estacion vacío son globales (aplican a todas).
+    // Las que tienen data-estacion solo se muestran cuando esa estación está seleccionada.
+    document.getElementById('estacion_id').addEventListener('change', function () {
+      const estacionId = this.value;
+      const selectCategoria = document.getElementById('categoria_id');
+      const opciones = selectCategoria.querySelectorAll('option[data-estacion]');
+
+      // Resetear selección de categoría y ocultar checklist visible
+      selectCategoria.value = '';
+      document.querySelectorAll('.categoria-bloque').forEach(b => b.style.display = 'none');
+
+      opciones.forEach(opt => {
+        const optEstacion = opt.getAttribute('data-estacion');
+        if (!estacionId) {
+          // Sin estación seleccionada: mostrar solo las globales
+          opt.style.display = (optEstacion === '') ? '' : 'none';
+        } else {
+          opt.style.display = (optEstacion === '' || optEstacion === estacionId) ? '' : 'none';
+        }
+      });
+    });
 
     // ── Mostrar checklist de la categoría seleccionada ───────────────────────
     document.getElementById('categoria_id').addEventListener('change', function () {

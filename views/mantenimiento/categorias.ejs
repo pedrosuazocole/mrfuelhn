@@ -81,6 +81,15 @@
             <div class="cat-nombre">
               <i class="fas fa-tools" style="color:#ED1C24; margin-right:6px;"></i>
               <%= cat.nombre %>
+              <% if (cat.estacion_nombre) { %>
+                <span class="badge badge-info" style="margin-left:8px; font-size:11px;">
+                  <i class="fas fa-gas-pump"></i> <%= cat.estacion_nombre %>
+                </span>
+              <% } else { %>
+                <span class="badge badge-secondary" style="margin-left:8px; font-size:11px;" title="Aplica a todas las estaciones">
+                  <i class="fas fa-globe"></i> Todas
+                </span>
+              <% } %>
             </div>
             <% if (cat.descripcion) { %>
             <div class="cat-desc"><%= cat.descripcion %></div>
@@ -90,6 +99,10 @@
             <span class="badge badge-secondary">
               <i class="fas fa-list"></i> <%= cat.total_items %> ítems
             </span>
+            <button class="btn btn-sm btn-warning" title="Editar nombre"
+              onclick="abrirEditarCategoria(<%= cat.id %>, '<%= cat.nombre.replace(/'/g, "\\'") %>', '<%= (cat.descripcion||'').replace(/'/g, "\\'") %>')">
+              <i class="fas fa-edit"></i>
+            </button>
             <a href="/mantenimiento/admin/categorias/<%= cat.id %>/items"
                class="btn btn-sm btn-primary">
               <i class="fas fa-list"></i> Ver Ítems
@@ -101,7 +114,69 @@
     </div>
   </main>
 
+  <!-- Modal: Editar Categoría -->
+  <div id="modal-editar-categoria-mant" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Editar Categoría</h2>
+        <button class="modal-close" onclick="document.getElementById('modal-editar-categoria-mant').style.display='none'">&times;</button>
+      </div>
+      <form id="form-editar-categoria-mant">
+        <div class="form-group">
+          <label>Nombre de la Categoría *</label>
+          <input type="text" id="edit-mant-nombre" name="nombre" required class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea id="edit-mant-descripcion" name="descripcion" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-editar-categoria-mant').style.display='none'">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <%- include('../partials/footer') %>
   <script src="/js/main.js"></script>
+  <script>
+    let editarCategoriaMantId = null;
+
+    function abrirEditarCategoria(id, nombre, descripcion) {
+      editarCategoriaMantId = id;
+      document.getElementById('edit-mant-nombre').value = nombre;
+      document.getElementById('edit-mant-descripcion').value = descripcion;
+      document.getElementById('modal-editar-categoria-mant').style.display = 'flex';
+    }
+
+    document.getElementById('form-editar-categoria-mant').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('edit-mant-nombre').value;
+      const descripcion = document.getElementById('edit-mant-descripcion').value;
+      try {
+        const r = await fetch(`/mantenimiento/admin/categorias/${editarCategoriaMantId}/editar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, descripcion })
+        });
+        const data = await r.json();
+        if (data.success) {
+          location.reload();
+        } else {
+          alert('❌ Error: ' + data.mensaje);
+        }
+      } catch (err) {
+        alert('❌ Error de conexión al actualizar la categoría.');
+      }
+    });
+
+    // Cerrar modal al hacer clic fuera
+    window.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal')) {
+        e.target.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
