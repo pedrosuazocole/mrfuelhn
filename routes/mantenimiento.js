@@ -69,6 +69,7 @@ router.delete('/:id',       isAdmin, ctrl.eliminarMantenimiento);
 // ── Admin: gestión de categorías e ítems ─────────────────────────────────────
 router.get('/admin/categorias',                          isAdmin, ctrl.listarCategorias);
 router.post('/admin/categorias',                         isAdmin, ctrl.crearCategoria);
+router.post('/admin/categorias/:id/editar',               isAdmin, ctrl.editarCategoria);
 router.get('/admin/categorias/:categoria_id/items',      isAdmin, ctrl.listarItems);
 router.post('/admin/categorias/:categoria_id/items',     isAdmin, ctrl.crearItem);
 router.post('/admin/items/:id/toggle',                   isAdmin, ctrl.toggleItem);
