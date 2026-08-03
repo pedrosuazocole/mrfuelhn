@@ -1056,6 +1056,166 @@ async function migrarAV2() {
       console.log('  ⚠️  Error creando categorías de mantenimiento de Buenos Aires:', e.message);
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // CATEGORÍAS DE MANTENIMIENTO ESPECÍFICAS — POLVORÍN
+    // ═══════════════════════════════════════════════════════════════════
+    try {
+      const estPolvorin = await getAsync(
+        `SELECT id FROM estaciones WHERE LOWER(nombre) LIKE '%polvorin%' OR LOWER(nombre) LIKE '%polvorín%' LIMIT 1`
+      );
+
+      if (!estPolvorin) {
+        console.log('  ⚠️  Estación "Polvorín" no encontrada — se omiten sus categorías de mantenimiento.');
+      } else {
+        const pv = estPolvorin.id;
+
+        // Helper para crear categoría + ítems de forma idempotente
+        async function crearCategoriaMantenimientoPV(nombre, descripcion, orden, items) {
+          const existe = await getAsync('SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [nombre]);
+          if (existe) {
+            console.log(`  ℹ️  Categoría "${nombre}" ya existe, omitiendo`);
+            return;
+          }
+          await runAsync(
+            'INSERT INTO mantenimiento_categorias (nombre, descripcion, orden, estacion_id) VALUES (?, ?, ?, ?)',
+            [nombre, descripcion, orden, pv]
+          );
+          const cat = await getAsync('SELECT id FROM mantenimiento_categorias WHERE nombre = ?', [nombre]);
+          for (let i = 0; i < items.length; i++) {
+            await runAsync(
+              'INSERT INTO mantenimiento_items (categoria_id, nombre, descripcion, orden, max_fotos) VALUES (?, ?, ?, ?, ?)',
+              [cat.id, items[i].nombre, items[i].desc, i + 1, 5]
+            );
+          }
+          console.log(`✅ Categoría "${nombre}" (Polvorín) creada con ${items.length} ítems`);
+        }
+
+        // ── 1. Generador-Compresor Semanal ────────────────────────────────
+        await crearCategoriaMantenimientoPV(
+          'Mantenimiento Generador-Compresor Semanal — Polvorín',
+          'Mantenimiento semanal de generador y compresor de aire — Polvorín',
+          30,
+          [
+            { nombre: 'Generador — Prueba de Operación (20 min bajo carga)', desc: 'Enciende el generador bajo carga y verifica que funcione correctamente durante al menos 20 minutos' },
+            { nombre: 'Generador — Ruidos y Vibraciones', desc: 'Escucha ruidos inusuales y observa posibles vibraciones anormales' },
+            { nombre: 'Generador — Filtro de Aire', desc: 'Inspecciona el filtro de aire y límpialo si está sucio' },
+            { nombre: 'Generador — Mangueras y Conexiones', desc: 'Inspecciona mangueras y conexiones de refrigerante y combustible para detectar fugas o desgaste' },
+            { nombre: 'Compresor de Aire — Drenaje del Tanque de Aire', desc: 'Drena el agua acumulada en el tanque para evitar corrosión interna (con el compresor apagado y despresurizado)' },
+            { nombre: 'Compresor de Aire — Mangueras y Conexiones', desc: 'Inspecciona mangueras y conexiones en busca de desgaste, grietas o fugas' },
+            { nombre: 'Compresor de Aire — Pruebas de Seguridad', desc: 'Verifica que las válvulas de seguridad y el manómetro estén funcionando correctamente' },
+          ]
+        );
+
+        // ── 2. Generador Anual / Compresor Bimestral ──────────────────────
+        await crearCategoriaMantenimientoPV(
+          'Mantenimiento Generador Anual y Compresor Bimestral — Polvorín',
+          'Mantenimiento anual de generador y bimestral de compresor de aire — Polvorín',
+          31,
+          [
+            { nombre: 'Generador — Limpieza Integral', desc: 'Limpia a fondo el generador, incluyendo componentes internos y externos' },
+            { nombre: 'Generador — Calibración', desc: 'Ajusta los reguladores de voltaje y frecuencia si es necesario' },
+            { nombre: 'Generador — Prueba de Sistema (ATS)', desc: 'Inspección profesional completa, incluyendo pruebas de transferencia automática si está conectado a un ATS' },
+            { nombre: 'Generador — Cambio de Componentes', desc: 'Reemplaza bujías, filtros de combustible y cualquier componente desgastado' },
+            { nombre: 'Compresor de Aire — Drenaje del Tanque de Aire', desc: 'Drena el agua acumulada en el tanque para evitar corrosión interna' },
+            { nombre: 'Compresor de Aire — Mangueras y Conexiones', desc: 'Inspecciona mangueras y conexiones en busca de desgaste, grietas o fugas' },
+            { nombre: 'Compresor de Aire — Pruebas de Seguridad', desc: 'Verifica que las válvulas de seguridad y el manómetro estén funcionando correctamente' },
+            { nombre: 'Compresor de Aire — Filtro de Aire', desc: 'Limpia el filtro de aire si es reutilizable, o reemplázalo si está muy desgastado o sucio' },
+            { nombre: 'Compresor de Aire — Lubricación', desc: 'Si el compresor requiere aceite, revisa el nivel y cámbialo si está sucio o por debajo del nivel recomendado' },
+            { nombre: 'Compresor de Aire — Cables Eléctricos', desc: 'Asegúrate de que los cables de alimentación no estén dañados ni desgastados' },
+          ]
+        );
+
+        // ── 3. Filtros y Sensores Dispensador Semestral ───────────────────
+        await crearCategoriaMantenimientoPV(
+          'Mantenimiento Filtros y Sensores Dispensador Semestral — Polvorín',
+          'Inspección semestral de filtros de combustible, sensores y pantallas del dispensador — Polvorín',
+          32,
+          [
+            { nombre: 'Filtro de Combustible — Bomba 1 (Tipo e Inspección)', desc: 'Inspeccionar y registrar el tipo de filtro de la Bomba 1' },
+            { nombre: 'Filtro de Combustible — Bomba 2 (Tipo e Inspección)', desc: 'Inspeccionar y registrar el tipo de filtro de la Bomba 2' },
+            { nombre: 'Filtro de Combustible — Bomba 3 (Tipo e Inspección)', desc: 'Inspeccionar y registrar el tipo de filtro de la Bomba 3' },
+            { nombre: 'Filtro de Combustible — Bomba 4 (Tipo e Inspección)', desc: 'Inspeccionar y registrar el tipo de filtro de la Bomba 4' },
+            { nombre: 'Filtro de Combustible — Bomba 5 (Tipo e Inspección)', desc: 'Inspeccionar y registrar el tipo de filtro de la Bomba 5' },
+            { nombre: 'Filtro de Combustible — Bomba 6 (Tipo e Inspección)', desc: 'Inspeccionar y registrar el tipo de filtro de la Bomba 6' },
+            { nombre: 'Sensor Dispensador — Bomba 1 (Bueno/Malo)', desc: 'Verificar estado del sensor de la Bomba 1' },
+            { nombre: 'Sensor Dispensador — Bomba 2 (Bueno/Malo)', desc: 'Verificar estado del sensor de la Bomba 2' },
+            { nombre: 'Sensor Dispensador — Bomba 3 (Bueno/Malo)', desc: 'Verificar estado del sensor de la Bomba 3' },
+            { nombre: 'Sensor Dispensador — Bomba 4 (Bueno/Malo)', desc: 'Verificar estado del sensor de la Bomba 4' },
+            { nombre: 'Sensor Dispensador — Bomba 5 (Bueno/Malo)', desc: 'Verificar estado del sensor de la Bomba 5' },
+            { nombre: 'Sensor Dispensador — Bomba 6 (Bueno/Malo)', desc: 'Verificar estado del sensor de la Bomba 6' },
+            { nombre: 'Pantalla Dispensador — Bomba 1 (Bueno/Malo)', desc: 'Verificar estado de la pantalla de la Bomba 1' },
+            { nombre: 'Pantalla Dispensador — Bomba 2 (Bueno/Malo)', desc: 'Verificar estado de la pantalla de la Bomba 2' },
+            { nombre: 'Pantalla Dispensador — Bomba 3 (Bueno/Malo)', desc: 'Verificar estado de la pantalla de la Bomba 3' },
+            { nombre: 'Pantalla Dispensador — Bomba 4 (Bueno/Malo)', desc: 'Verificar estado de la pantalla de la Bomba 4' },
+            { nombre: 'Pantalla Dispensador — Bomba 5 (Bueno/Malo)', desc: 'Verificar estado de la pantalla de la Bomba 5' },
+            { nombre: 'Pantalla Dispensador — Bomba 6 (Bueno/Malo)', desc: 'Verificar estado de la pantalla de la Bomba 6' },
+          ]
+        );
+
+        // ── 4. Mangueras-Boquillas-Calibración-Generador Trimestral ──────
+        await crearCategoriaMantenimientoPV(
+          'Mantenimiento Mangueras-Boquillas-Calibración-Generador Trimestral — Polvorín',
+          'Revisión trimestral de mangueras, boquillas, calibración de dispensador y generador — Polvorín',
+          33,
+          [
+            { nombre: 'Manguera Dispensador — Bomba 1 (Bueno/Malo)', desc: 'Verificar estado de la manguera de la Bomba 1' },
+            { nombre: 'Manguera Dispensador — Bomba 2 (Bueno/Malo)', desc: 'Verificar estado de la manguera de la Bomba 2' },
+            { nombre: 'Manguera Dispensador — Bomba 3 (Bueno/Malo)', desc: 'Verificar estado de la manguera de la Bomba 3' },
+            { nombre: 'Manguera Dispensador — Bomba 4 (Bueno/Malo)', desc: 'Verificar estado de la manguera de la Bomba 4' },
+            { nombre: 'Manguera Dispensador — Bomba 5 (Bueno/Malo)', desc: 'Verificar estado de la manguera de la Bomba 5' },
+            { nombre: 'Manguera Dispensador — Bomba 6 (Bueno/Malo)', desc: 'Verificar estado de la manguera de la Bomba 6' },
+            { nombre: 'Boquilla Dispensador — Bomba 1 (Bueno/Malo)', desc: 'Verificar estado de la boquilla de la Bomba 1' },
+            { nombre: 'Boquilla Dispensador — Bomba 2 (Bueno/Malo)', desc: 'Verificar estado de la boquilla de la Bomba 2' },
+            { nombre: 'Boquilla Dispensador — Bomba 3 (Bueno/Malo)', desc: 'Verificar estado de la boquilla de la Bomba 3' },
+            { nombre: 'Boquilla Dispensador — Bomba 4 (Bueno/Malo)', desc: 'Verificar estado de la boquilla de la Bomba 4' },
+            { nombre: 'Boquilla Dispensador — Bomba 5 (Bueno/Malo)', desc: 'Verificar estado de la boquilla de la Bomba 5' },
+            { nombre: 'Boquilla Dispensador — Bomba 6 (Bueno/Malo)', desc: 'Verificar estado de la boquilla de la Bomba 6' },
+            { nombre: 'Calibración Dispensador — Bomba 1 (Resultado)', desc: 'Registrar resultado de calibración de la Bomba 1' },
+            { nombre: 'Calibración Dispensador — Bomba 2 (Resultado)', desc: 'Registrar resultado de calibración de la Bomba 2' },
+            { nombre: 'Calibración Dispensador — Bomba 3 (Resultado)', desc: 'Registrar resultado de calibración de la Bomba 3' },
+            { nombre: 'Calibración Dispensador — Bomba 4 (Resultado)', desc: 'Registrar resultado de calibración de la Bomba 4' },
+            { nombre: 'Calibración Dispensador — Bomba 5 (Resultado)', desc: 'Registrar resultado de calibración de la Bomba 5' },
+            { nombre: 'Calibración Dispensador — Bomba 6 (Resultado)', desc: 'Registrar resultado de calibración de la Bomba 6' },
+            { nombre: 'Generador — Sistema de Refrigeración', desc: 'Revisa y limpia el radiador, y verifica el nivel y la calidad del refrigerante' },
+            { nombre: 'Generador — Sistema Eléctrico', desc: 'Inspecciona los cables, conexiones y terminales en busca de desgaste o corrosión' },
+            { nombre: 'Generador — Prueba de Carga Completa', desc: 'Opera el generador a su capacidad máxima para asegurarte de que puede soportar la carga' },
+          ]
+        );
+
+        // ── 5. Extintores-Tanque de Agua-Compresor-Generador Bimestral ───
+        await crearCategoriaMantenimientoPV(
+          'Mantenimiento Extintores-Tanque de Agua-Compresor-Generador Bimestral — Polvorín',
+          'Mantenimiento bimestral de extintores, tanque de presión de agua, compresor de aire y generador — Polvorín',
+          34,
+          [
+            { nombre: 'Extintor Bomba 1 — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de Bomba 1' },
+            { nombre: 'Extintor Bomba 2 — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de Bomba 2' },
+            { nombre: 'Extintor Bomba 3 — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de Bomba 3' },
+            { nombre: 'Extintor Bomba 4 — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de Bomba 4' },
+            { nombre: 'Extintor Área de Descarga 1 — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor del Área de Descarga 1' },
+            { nombre: 'Extintor Área de Descarga 2 — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor del Área de Descarga 2' },
+            { nombre: 'Extintor Oficina — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de la Oficina' },
+            { nombre: 'Extintor Oficina 2da Planta — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de la Oficina 2da Planta' },
+            { nombre: 'Extintor Generador — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor del Generador' },
+            { nombre: 'Extintor Parte de Atrás Locales — Estado (Bueno/Malo)', desc: 'Verificar estado del extintor de la Parte de Atrás de los Locales' },
+            { nombre: 'Fecha de Vencimiento de Extintores', desc: 'Registrar fechas de vencimiento de todos los extintores (Bombas 1-4, Área de Descarga 1 y 2, Oficina, Oficina 2da Planta, Generador, Parte de Atrás Locales)' },
+            { nombre: 'Tanque de Presión — Verificación de Presión Interna', desc: 'Usa un manómetro para medir la presión del aire dentro del tanque y ajusta si es necesario' },
+            { nombre: 'Tanque de Presión — Inspección de Válvulas y Conexiones', desc: 'Verifica que las válvulas de entrada y salida funcionen correctamente y las conexiones no estén obstruidas' },
+            { nombre: 'Tanque de Presión — Limpieza Externa', desc: 'Limpia el tanque y el área circundante para evitar acumulación de polvo, suciedad o residuos' },
+            { nombre: 'Tanque de Presión — Calibración del Sistema', desc: 'Asegúrate de que la bomba y el interruptor de presión estén ajustados según las necesidades del sistema' },
+            { nombre: 'Compresor de Aire — Drenaje del Tanque de Aire', desc: 'Drena el agua acumulada en el tanque para evitar corrosión interna (con el compresor apagado y despresurizado)' },
+            { nombre: 'Compresor de Aire — Mangueras y Conexiones', desc: 'Inspecciona mangueras y conexiones en busca de desgaste, grietas o fugas. Reemplaza componentes si es necesario' },
+            { nombre: 'Generador — Inspección General', desc: 'Revisa el estado del alternador, correas, ventiladores y el sistema de escape' },
+            { nombre: 'Generador — Prueba de Batería', desc: 'Mide el voltaje y carga de la batería. Sustituye si los niveles están fuera de rango' },
+            { nombre: 'Generador — Revisión del Sistema de Combustible', desc: 'Comprueba el tanque de combustible, líneas y filtros en busca de obstrucciones o contaminantes' },
+            { nombre: 'Generador — Drenaje del Agua del Tanque de Combustible', desc: 'Elimina cualquier acumulación de agua o sedimentos en el tanque' },
+          ]
+        );
+      }
+    } catch (e) {
+      console.log('  ⚠️  Error creando categorías de mantenimiento de Polvorín:', e.message);
+    }
+
 
     const acExistente = await getAsync(
       "SELECT id FROM mantenimiento_categorias WHERE nombre = 'Aire Acondicionado'"
