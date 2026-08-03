@@ -167,11 +167,25 @@ const programarRecordatorioAuditorias = () => {
 };
 
 /**
- * Recordatorio urgente (3:00 PM) — solo estaciones que siguen pendientes
+ * Recordatorio auditoría por estación (12:00 PM) — supervisores + copia a admins
+ */
+const programarRecordatorioMediodia = () => {
+  cron.schedule('0 12 * * *', async () => {
+    console.log('\n⏰ [Cron] Recordatorio auditoría por estación (12:00 PM)...');
+    try {
+      await enviarRecordatoriosPorEstacion(false); // urgente = false
+    } catch (error) {
+      console.error('❌ Error en recordatorio mediodía:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
+ * Recordatorio urgente (1:00 PM) — solo estaciones que siguen pendientes
  */
 const programarRecordatorioUrgenteAuditorias = () => {
-  cron.schedule('0 15 * * *', async () => {
-    console.log('\n⏰ [Cron] Recordatorio URGENTE de auditorías (3:00 PM)...');
+  cron.schedule('0 13 * * *', async () => {
+    console.log('\n⏰ [Cron] Recordatorio URGENTE de auditorías (1:00 PM)...');
     try {
       await enviarRecordatoriosPorEstacion(true); // urgente = true
     } catch (error) {
@@ -263,6 +277,7 @@ const iniciarCronJobs = () => {
   programarRecordatoriosSemanales();
   reenviarRecordatoriosFallidos();
   programarRecordatorioAuditorias();
+  programarRecordatorioMediodia();
   programarRecordatorioUrgenteAuditorias();
   programarReporteAuditorias();
   programarReporteMantenimientos();
@@ -270,7 +285,8 @@ const iniciarCronJobs = () => {
   programarMantenimientoViernes();
   programarMantenimientoLunes();
   console.log('📅 Recordatorio matutino auditorías:        9:00 AM (supervisores + admins)');
-  console.log('📅 Recordatorio urgente auditorías:         3:00 PM (supervisores + admins)');
+  console.log('📅 Recordatorio auditoría por estación:     12:00 PM (supervisores + admins)');
+  console.log('📅 Recordatorio urgente auditorías:         1:00 PM (supervisores + admins)');
   console.log('📅 Mantenimiento semanal Circunv/Polv/105:  Viernes 3:00 PM');
   console.log('📅 Mantenimiento semanal Buenos Aires:      Lunes 1:00 PM');
   console.log('📅 Reportes diarios: 2:00 PM (auditorías), 5:00 PM (mantenimiento), 7:00 PM (tickets)');
