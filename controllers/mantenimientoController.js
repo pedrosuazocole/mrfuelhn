@@ -397,16 +397,19 @@ exports.eliminarMantenimiento = async (req, res) => {
 exports.listarCategorias = async (req, res) => {
   try {
     const categorias = await allAsync(`
-      SELECT mc.*, COUNT(mi.id) AS total_items
+      SELECT mc.*, e.nombre AS estacion_nombre, COUNT(mi.id) AS total_items
       FROM mantenimiento_categorias mc
+      LEFT JOIN estaciones e ON mc.estacion_id = e.id
       LEFT JOIN mantenimiento_items mi ON mc.id = mi.categoria_id
       GROUP BY mc.id
       ORDER BY mc.orden
     `);
+    const estaciones = await allAsync('SELECT id, nombre FROM estaciones WHERE activo = 1 ORDER BY nombre');
     res.render('mantenimiento/categorias', {
       user: req.session,
       titulo: 'Categorías de Mantenimiento',
-      categorias
+      categorias,
+      estaciones
     });
   } catch (error) {
     console.error('Error listarCategorias:', error);
@@ -427,6 +430,25 @@ exports.crearCategoria = async (req, res) => {
   } catch (error) {
     console.error('Error crearCategoria:', error);
     res.status(500).send('Error al crear categoría');
+  }
+};
+
+// ─── ADMIN: EDITAR NOMBRE DE CATEGORÍA ───────────────────────────────────────
+exports.editarCategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion } = req.body;
+    if (!nombre || !nombre.trim()) {
+      return res.status(400).json({ success: false, mensaje: 'El nombre es obligatorio' });
+    }
+    await runAsync(
+      'UPDATE mantenimiento_categorias SET nombre = ?, descripcion = ? WHERE id = ?',
+      [nombre.trim(), descripcion || null, id]
+    );
+    res.json({ success: true, mensaje: 'Categoría actualizada' });
+  } catch (error) {
+    console.error('Error editarCategoria:', error);
+    res.status(500).json({ success: false, mensaje: 'Error al actualizar categoría' });
   }
 };
 
