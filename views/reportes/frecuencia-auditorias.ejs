@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frecuencia de Auditorías | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <%- include('../partials/pwa-head') %>
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main>
+<style>
+  :root {
+    --rojo: #ED1C24; --rojo-dark: #B3151A;
+    --negro: #0D0D0D; --charcoal: #1A1A1A;
+    --gris: #6B7280; --gris-claro: #F3F4F6;
+    --verde: #16A34A; --amarillo: #D97706;
+  }
+  .reporte-header {
+    background: var(--negro); color: #fff;
+    padding: 1.5rem 2rem; border-bottom: 3px solid var(--rojo);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+  }
+  .reporte-header h1 { font-size: 1.4rem; font-weight: 700; margin: 0; }
+  .reporte-header p  { font-size: 0.85rem; color: #9CA3AF; margin: 0.2rem 0 0; }
+  .filtros-card {
+    background: #fff; border: 1px solid #E5E7EB; border-radius: 8px;
+    padding: 1.25rem 1.5rem; margin: 1.5rem 1.5rem 0;
+    display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;
+  }
+  .filtro-grupo { display: flex; flex-direction: column; gap: 0.35rem; }
+  .filtro-grupo label { font-size: 0.75rem; font-weight: 600; color: var(--gris); text-transform: uppercase; letter-spacing: 0.04em; }
+  .filtro-grupo select,
+  .filtro-grupo input { border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.45rem 0.75rem; font-size: 0.9rem; }
+  .btn-filtrar { background: var(--rojo); color: #fff; border: none; border-radius: 6px; padding: 0.5rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; align-self: flex-end; }
+  .btn-filtrar:hover { background: var(--rojo-dark); }
+  .stats-row { display: flex; gap: 1rem; margin: 1.25rem 1.5rem 0; flex-wrap: wrap; }
+  .stat-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1rem 1.5rem; flex: 1; min-width: 140px; text-align: center; }
+  .stat-card .num { font-size: 2rem; font-weight: 800; color: var(--rojo); line-height: 1; }
+  .stat-card .lbl { font-size: 0.75rem; color: var(--gris); margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .seccion { margin: 1.5rem 1.5rem 0; }
+  .seccion h2 { font-size: 1rem; font-weight: 700; color: var(--negro); margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+  .seccion h2::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--rojo); border-radius: 2px; }
+  .tabla-ranking { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #E5E7EB; }
+  .tabla-ranking thead th { background: var(--charcoal); color: #fff; padding: 0.75rem 1rem; font-size: 0.75rem; text-align: left; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .tabla-ranking thead th:not(:first-child) { text-align: center; }
+  .tabla-ranking tbody tr:nth-child(even) { background: var(--gris-claro); }
+  .tabla-ranking tbody tr:hover { background: #FEF2F2; }
+  .tabla-ranking tbody td { padding: 0.85rem 1rem; font-size: 0.875rem; color: var(--negro); border-bottom: 1px solid #F3F4F6; }
+  .tabla-ranking tbody td:not(:first-child):not(:nth-child(2)) { text-align: center; }
+  .rank-num { font-size: 1.1rem; font-weight: 800; color: var(--rojo); min-width: 28px; display: inline-block; }
+  .auditor-nombre { font-weight: 600; }
+  .auditor-rol { font-size: 0.75rem; color: var(--gris); }
+  .barra-wrap { display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
+  .barra-bg { height: 8px; background: #E5E7EB; border-radius: 4px; width: 80px; overflow: hidden; }
+  .barra-fill { height: 100%; border-radius: 4px; }
+  .barra-verde { background: var(--verde); }
+  .barra-amarilla { background: var(--amarillo); }
+  .barra-roja { background: var(--rojo); }
+  .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+  .badge-verde { background: #D1FAE5; color: #065F46; }
+  .badge-rojo  { background: #FEE2E2; color: #991B1B; }
+  .btn-detalle { background: none; border: 1px solid #D1D5DB; border-radius: 6px; padding: 0.3rem 0.75rem; font-size: 0.78rem; cursor: pointer; color: var(--gris); }
+  .btn-detalle:hover { border-color: var(--rojo); color: var(--rojo); }
+  .tabla-detalle-wrap { margin: 1rem 1.5rem 2rem; display: none; }
+  .tabla-detalle-wrap.visible { display: block; }
+  .tabla-detalle { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .tabla-detalle thead th { background: #F9FAFB; color: var(--gris); border-bottom: 2px solid #E5E7EB; padding: 0.5rem 0.75rem; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .tabla-detalle tbody td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #F3F4F6; }
+  .tabla-detalle tbody tr:hover { background: #FEF9C3; }
+  .cal-alta  { color: var(--verde); font-weight: 700; }
+  .cal-media { color: var(--amarillo); font-weight: 700; }
+  .cal-baja  { color: var(--rojo); font-weight: 700; }
+  .cal-null  { color: #9CA3AF; }
+  .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--gris); }
+</style>
+
+<div class="reporte-header">
+  <div>
+    <h1>📋 Frecuencia de Auditorías</h1>
+    <p>Actividad por auditor ordenada de mayor a menor &bull;
+       Período: <strong><%= filtros.fecha_inicio %></strong> al <strong><%= filtros.fecha_fin %></strong></p>
+  </div>
+  <a href="/reportes/frecuencia-mantenimientos?fecha_inicio=<%= filtros.fecha_inicio %>&fecha_fin=<%= filtros.fecha_fin %>"
+     style="color:#9CA3AF;font-size:0.85rem;text-decoration:none;">
+    ← Ver mantenimientos
+  </a>
+</div>
+
+<!-- FILTROS -->
+<form method="GET" action="/reportes/frecuencia-auditorias" class="filtros-card">
+  <div class="filtro-grupo">
+    <label>Fecha inicio</label>
+    <input type="date" name="fecha_inicio" value="<%= filtros.fecha_inicio %>">
+  </div>
+  <div class="filtro-grupo">
+    <label>Fecha fin</label>
+    <input type="date" name="fecha_fin" value="<%= filtros.fecha_fin %>">
+  </div>
+  <div class="filtro-grupo">
+    <label>Auditor / Supervisor</label>
+    <select name="auditor_id">
+      <option value="todos" <%= filtros.auditor_id === 'todos' ? 'selected' : '' %>>Todos</option>
+      <% auditores.forEach(a => { %>
+        <option value="<%= a.id %>" <%= String(filtros.auditor_id) === String(a.id) ? 'selected' : '' %>>
+          <%= a.nombre %>
+        </option>
+      <% }); %>
+    </select>
+  </div>
+  <button type="submit" class="btn-filtrar">Aplicar filtros</button>
+</form>
+
+<!-- ESTADÍSTICAS -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="num"><%= resumen.totalAuditorias %></div>
+    <div class="lbl">Auditorías totales</div>
+  </div>
+  <div class="stat-card">
+    <div class="num"><%= resumen.promedioGeneral %>%</div>
+    <div class="lbl">Calificación promedio</div>
+  </div>
+  <div class="stat-card">
+    <div class="num"><%= resumen.auditores %></div>
+    <div class="lbl">Auditores activos</div>
+  </div>
+</div>
+
+<!-- RANKING POR AUDITOR -->
+<div class="seccion">
+  <h2>Ranking por auditor</h2>
+  <% if (porAuditor.length === 0) { %>
+    <div class="empty-state">
+      <i class="fas fa-clipboard-list"></i>
+      No hay auditorías en el período seleccionado.
+    </div>
+  <% } else { %>
+  <table class="tabla-ranking">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Auditor</th>
+        <th>Total</th>
+        <th>Calificación prom.</th>
+        <th>Aprobadas</th>
+        <th>Reprobadas</th>
+        <th>Primera vez</th>
+        <th>Última vez</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% porAuditor.forEach((a, idx) => {
+           const pct = a.promedio_calificacion || 0;
+           const clsBarra = pct >= 80 ? 'barra-verde' : pct >= 60 ? 'barra-amarilla' : 'barra-roja';
+           const clsCal   = pct >= 80 ? 'cal-alta'   : pct >= 60 ? 'cal-media'    : pct > 0 ? 'cal-baja' : 'cal-null';
+      %>
+      <tr>
+        <td><span class="rank-num"><%= idx + 1 %></span></td>
+        <td>
+          <div class="auditor-nombre"><%= a.auditor_nombre %></div>
+          <div class="auditor-rol"><%= a.auditor_rol %></div>
+        </td>
+        <td><strong><%= a.total %></strong></td>
+        <td>
+          <div class="barra-wrap">
+            <div class="barra-bg"><div class="barra-fill <%= clsBarra %>" style="width:<%= Math.min(pct,100) %>%"></div></div>
+            <span class="<%= clsCal %>"><%= pct > 0 ? pct + '%' : '—' %></span>
+          </div>
+        </td>
+        <td><span class="badge badge-verde"><%= a.aprobadas %></span></td>
+        <td><span class="badge badge-rojo"><%= a.reprobadas %></span></td>
+        <td style="color:var(--gris);font-size:0.8rem"><%= a.primera_fecha || '—' %></td>
+        <td style="color:var(--gris);font-size:0.8rem"><%= a.ultima_fecha  || '—' %></td>
+        <td>
+          <button class="btn-detalle" onclick="toggleDetalle('<%= a.auditor_id %>')">Ver detalle</button>
+        </td>
+      </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+
+<!-- DETALLES POR AUDITOR -->
+<% porAuditor.forEach(a => { %>
+<div id="detalle-<%= a.auditor_id %>" class="tabla-detalle-wrap">
+  <h2 style="font-size:0.9rem;color:var(--gris);margin-bottom:0.5rem;">
+    Detalle de auditorías — <strong><%= a.auditor_nombre %></strong>
+  </h2>
+  <table class="tabla-detalle">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Hora</th>
+        <th>Estación</th>
+        <th>Supervisor firmante</th>
+        <th>Calificación</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% detalle.filter(d => d.auditor_nombre === a.auditor_nombre).forEach((d, i) => {
+           const pct = d.calificacion_general || 0;
+           const clsCal = pct >= 80 ? 'cal-alta' : pct >= 60 ? 'cal-media' : pct > 0 ? 'cal-baja' : 'cal-null';
+      %>
+      <tr>
+        <td style="color:var(--gris)"><%= i + 1 %></td>
+        <td><%= d.fecha_visita %></td>
+        <td><%= d.hora_visita || '—' %></td>
+        <td><%= d.estacion_nombre %></td>
+        <td><%= d.supervisor_nombre || '—' %></td>
+        <td class="<%= clsCal %>"><%= pct > 0 ? pct + '%' : '—' %></td>
+        <td><%= d.estado || '—' %></td>
+      </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% }); %>
+
+<div style="margin-bottom: 2rem;"></div>
+
+<script>
+function toggleDetalle(auditorId) {
+  const div = document.getElementById('detalle-' + auditorId);
+  if (!div) return;
+  const visible = div.classList.toggle('visible');
+  const btn = document.querySelector(`button[onclick="toggleDetalle('${auditorId}')"]`);
+  if (btn) btn.textContent = visible ? 'Ocultar' : 'Ver detalle';
+  if (visible) div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+
+<%- include('../partials/footer') %>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

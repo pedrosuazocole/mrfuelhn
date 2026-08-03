@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es-HN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= titulo %> | Mr. Fuel</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <%- include('../partials/pwa-head') %>
+</head>
+<body>
+  <%- include('../partials/header') %>
+  
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-home"></i> Dashboard
+      </h1>
+      <a href="/auditorias-v2/nueva" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Nueva Auditoría
+      </a>
+    </div>
+    
+    <!-- ESTADÍSTICAS PRINCIPALES -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="color: var(--texaco-red);">
+          <i class="fas fa-clipboard-check"></i>
+        </div>
+        <div class="stat-value"><%= stats.totalAuditorias %></div>
+        <div class="stat-label">Auditorías Totales</div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon" style="color: #17a2b8;">
+          <i class="fas fa-gas-pump"></i>
+        </div>
+        <div class="stat-value"><%= stats.totalEstaciones %></div>
+        <div class="stat-label">Estaciones Activas</div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon" style="color: <%= stats.promedioGeneral >= 80 ? '#28a745' : stats.promedioGeneral >= 60 ? '#ffc107' : '#dc3545' %>;">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="stat-value"><%= stats.promedioGeneral %>%</div>
+        <div class="stat-label">Promedio General</div>
+      </div>
+    </div>
+
+    <!-- ESTADÍSTICAS DE MANTENIMIENTO -->
+    <div class="stats-grid" style="margin-top: 0;">
+      <div class="stat-card">
+        <div class="stat-icon" style="color: #6f42c1;">
+          <i class="fas fa-tools"></i>
+        </div>
+        <div class="stat-value"><%= stats.totalMantenimientos %></div>
+        <div class="stat-label">Mantenimientos Totales</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: <%= stats.promedioMantenimiento >= 80 ? '#28a745' : stats.promedioMantenimiento >= 60 ? '#ffc107' : '#dc3545' %>;">
+          <i class="fas fa-percentage"></i>
+        </div>
+        <div class="stat-value"><%= stats.promedioMantenimiento %>%</div>
+        <div class="stat-label">Promedio Mantenimiento</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: #fd7e14;">
+          <i class="fas fa-building"></i>
+        </div>
+        <div style="width:100%;">
+          <% if (stats.mantPorEstacion && stats.mantPorEstacion.length > 0) { %>
+            <% stats.mantPorEstacion.forEach(est => { %>
+            <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-bottom:1px solid #f0f0f0;">
+              <span style="color:#555;"><%= est.estacion %></span>
+              <strong style="color:#333;"><%= est.total %></strong>
+            </div>
+            <% }); %>
+          <% } else { %>
+            <div class="stat-value">0</div>
+          <% } %>
+          <div class="stat-label" style="margin-top:6px;">Mantenimientos por Estación</div>
+        </div>
+      </div>
+    </div>
+
+        <!-- ÚLTIMAS AUDITORÍAS -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-history"></i> Últimas Auditorías
+      </div>
+      
+      <% if (ultimasAuditorias.length === 0) { %>
+        <p class="text-center text-muted">No hay auditorías registradas aún.</p>
+      <% } else { %>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Estación</th>
+                <th>Auditor</th>
+                <th>Calificación</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% ultimasAuditorias.forEach(aud => { %>
+              <tr>
+                <td><%= aud.fecha_visita ? aud.fecha_visita.split('T')[0].split('-').reverse().join('/') : '' %></td>
+                <td><%= aud.estacion_nombre %></td>
+                <td><%= aud.auditor_nombre %></td>
+                <td>
+                  <span class="badge <%= aud.calificacion_general >= 80 ? 'badge-success' : aud.calificacion_general >= 60 ? 'badge-warning' : 'badge-danger' %>">
+                    <%= aud.calificacion_general %>%
+                  </span>
+                </td>
+                <td>
+                  <a href="/auditorias-v2/<%= aud.id %>" class="btn btn-sm btn-primary">
+                    <i class="fas fa-eye"></i> Ver
+                  </a>
+                </td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+      
+      <div class="text-center mt-20">
+        <a href="/auditorias-v2" class="btn btn-secondary">
+          Ver Todas las Auditorías <i class="fas fa-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('../partials/footer') %>
+  <script src="/js/main.js"></script>
+</body>
+</html>

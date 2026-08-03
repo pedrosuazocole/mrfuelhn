@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Mantenimiento #<%= mant.id %></title>
+  <style>
+    @media print {
+      @page { margin: 0.5in; }
+      body { margin: 0; }
+      .no-print { display: none; }
+    }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      color: #333;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 3px solid #ED1C24;
+      padding-bottom: 20px;
+    }
+    .header h1 { color: #ED1C24; margin: 0; font-size: 24px; }
+    .header p  { margin: 5px 0; color: #666; }
+    .section   { margin-bottom: 30px; }
+    .section h2 {
+      color: #ED1C24;
+      font-size: 18px;
+      border-bottom: 2px solid #ED1C24;
+      padding-bottom: 5px;
+      margin-bottom: 15px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .info-label { font-weight: bold; }
+    .calificacion {
+      text-align: center;
+      font-size: 32px;
+      color: #ED1C24;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .item-nombre { flex: 1; }
+    .item-estado {
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .cumple    { background: #d1e7dd; color: #0f5132; }
+    .no-cumple { background: #f8d7da; color: #842029; }
+    .observacion {
+      color: #666;
+      font-size: 12px;
+      margin-top: 5px;
+      padding-left: 20px;
+      font-style: italic;
+    }
+    .fotos-item {
+      margin-top: 10px;
+      padding-left: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .fotos-item img {
+      max-width: 150px;
+      max-height: 150px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    .obs-box {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin-top: 6px;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 10px;
+      color: #666;
+      border-top: 1px solid #ddd;
+      padding-top: 20px;
+    }
+    .btn-print {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #ED1C24;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    .btn-print:hover { background: #D01920; }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" class="btn-print no-print">
+    🖨️ Imprimir / Guardar PDF
+  </button>
+
+  <div class="header">
+    <h1>🔧 REPORTE DE MANTENIMIENTO</h1>
+    <p>Mr. Fuel - Sistema de Mantenimiento</p>
+  </div>
+
+  <div class="section">
+    <h2>INFORMACION GENERAL</h2>
+    <div class="info-grid">
+      <div class="info-label">Estacion:</div>
+      <div><%= mant.estacion_nombre %></div>
+
+      <div class="info-label">Categoria:</div>
+      <div><%= mant.categoria_nombre %></div>
+
+      <div class="info-label">Fecha:</div>
+      <div><%= mant.fecha_visita ? mant.fecha_visita.split('T')[0].split('-').reverse().join('/') : '' %></div>
+
+      <div class="info-label">Hora:</div>
+      <div><%= mant.hora_visita %></div>
+
+      <div class="info-label">Tecnico:</div>
+      <div><%= mant.tecnico_nombre %></div>
+    </div>
+
+    <div class="calificacion">
+      Calificacion: <%= mant.calificacion_general %>%
+    </div>
+  </div>
+
+  <% if (evaluaciones && evaluaciones.length > 0) { %>
+  <div class="section">
+    <h2>EVALUACION DETALLADA</h2>
+
+    <% evaluaciones.forEach(ev => { %>
+    <div class="item">
+      <div class="item-nombre">• <%= ev.item_nombre %></div>
+      <div class="item-estado <%= ev.cumple ? 'cumple' : 'no-cumple' %>">
+        <%= ev.cumple ? '✓ Cumple' : '✗ No Cumple' %>
+      </div>
+    </div>
+    <% if (ev.observacion && ev.observacion.trim()) { %>
+    <div class="observacion"><%= ev.observacion %></div>
+    <% } %>
+    <% if (ev.fotos && ev.fotos.length > 0) { %>
+    <div class="fotos-item">
+      <% ev.fotos.forEach(foto => { %>
+      <img src="<%= foto.ruta_archivo %>" alt="Evidencia">
+      <% }); %>
+    </div>
+    <% } %>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <% if (mant.observaciones_generales && mant.observaciones_generales.trim()) { %>
+  <div class="section">
+    <h2>OBSERVACIONES GENERALES</h2>
+    <div class="obs-box"><%= mant.observaciones_generales %></div>
+  </div>
+  <% } %>
+
+  <% if (mant.recomendaciones && mant.recomendaciones.trim()) { %>
+  <div class="section">
+    <h2>RECOMENDACIONES</h2>
+    <div class="obs-box"><%= mant.recomendaciones %></div>
+  </div>
+  <% } %>
+
+  <div class="footer">
+    <p>© 2026-2027 Mr. Fuel v2.0 - Sistema de Auditorias Texaco</p>
+    <p>Metric Solutions & POS - WhatsApp: +504 9450 2710</p>
+  </div>
+
+  <script>
+    // Auto-imprimir en móviles
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      setTimeout(() => window.print(), 500);
+    }
+  </script>
+</body>
+</html>
