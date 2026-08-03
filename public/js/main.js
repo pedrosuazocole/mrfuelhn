@@ -79,7 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Cerrar menú al hacer click en un enlace
-    const menuLinks = navbarMenu.querySelectorAll('a');
+    // (excluye los toggles de dropdown "Reportes"/"Configuración": esos
+    // solo deben abrir/cerrar su submenú, no colapsar todo el menú móvil)
+    const menuLinks = navbarMenu.querySelectorAll('a:not(.nav-dropdown-toggle)');
     menuLinks.forEach(link => {
       link.addEventListener('click', () => {
         menuToggle.classList.remove('active');

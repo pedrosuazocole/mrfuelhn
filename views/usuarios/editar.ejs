@@ -54,6 +54,40 @@
             <input type="tel" name="telefono" id="telefono" class="form-control" placeholder="9999-9999" value="<%= usuario.telefono || '' %>">
           </div>
         </div>
+
+        <div class="card-header" style="margin-top: 20px;">
+          <i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp y Estación Asignada
+        </div>
+        <p style="padding: 10px 0 4px; color: #555; font-size: 0.9em;">
+          Configurá el número de WhatsApp para que este usuario reciba recordatorios de auditorías directamente.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label for="whatsapp_numero">
+              <i class="fab fa-whatsapp" style="color:#25D366;"></i> Número WhatsApp
+            </label>
+            <input type="text" name="whatsapp_numero" id="whatsapp_numero" class="form-control"
+                   placeholder="+50499999999"
+                   value="<%= usuario.whatsapp_numero || '' %>">
+            <small class="form-text">Número completo con código de país. Ej: +50499999999</small>
+          </div>
+
+          <div class="form-group">
+            <label for="estacion_id">
+              <i class="fas fa-gas-pump"></i> Estación Asignada
+            </label>
+            <select name="estacion_id" id="estacion_id" class="form-control">
+              <option value="">— Sin estación asignada —</option>
+              <% estaciones.forEach(est => { %>
+                <option value="<%= est.id %>" <%= usuario.estacion_id == est.id ? 'selected' : '' %>>
+                  <%= est.nombre %>
+                </option>
+              <% }); %>
+            </select>
+            <small class="form-text">Los supervisores recibirán recordatorios solo de su estación asignada.</small>
+          </div>
+        </div>
         
         <div class="form-group">
           <label>

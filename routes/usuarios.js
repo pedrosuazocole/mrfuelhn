@@ -28,11 +28,13 @@ router.post('/nuevo', async (req, res) => {
 
 router.get('/editar/:id', async (req, res) => {
   try {
-    const usuario = await getAsync('SELECT id, nombre, email, rol, telefono, activo FROM usuarios WHERE id = ?', [req.params.id]);
-    if (!usuario) {
-      return res.status(404).send('Usuario no encontrado');
-    }
-    res.render('usuarios/editar', { user: req.session, titulo: 'Editar Usuario', usuario });
+    const usuario = await getAsync(
+      'SELECT id, nombre, email, rol, telefono, activo, estacion_id, whatsapp_numero FROM usuarios WHERE id = ?',
+      [req.params.id]
+    );
+    if (!usuario) return res.status(404).send('Usuario no encontrado');
+    const estaciones = await allAsync('SELECT id, nombre FROM estaciones WHERE activo = 1 ORDER BY nombre');
+    res.render('usuarios/editar', { user: req.session, titulo: 'Editar Usuario', usuario, estaciones });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).send('Error al cargar usuario');
@@ -41,21 +43,21 @@ router.get('/editar/:id', async (req, res) => {
 
 router.post('/editar/:id', async (req, res) => {
   try {
-    const { nombre, email, rol, telefono, activo, password } = req.body;
-    
+    const { nombre, email, rol, telefono, activo, password, estacion_id, whatsapp_numero } = req.body;
+
     if (password && password.trim() !== '') {
       const hash = await bcrypt.hash(password, 10);
       await runAsync(
-        'UPDATE usuarios SET nombre = ?, email = ?, rol = ?, telefono = ?, activo = ?, password = ? WHERE id = ?',
-        [nombre, email, rol, telefono || null, activo === 'on' ? 1 : 0, hash, req.params.id]
+        'UPDATE usuarios SET nombre = ?, email = ?, rol = ?, telefono = ?, activo = ?, password = ?, estacion_id = ?, whatsapp_numero = ? WHERE id = ?',
+        [nombre, email, rol, telefono || null, activo === 'on' ? 1 : 0, hash, estacion_id || null, whatsapp_numero?.trim() || null, req.params.id]
       );
     } else {
       await runAsync(
-        'UPDATE usuarios SET nombre = ?, email = ?, rol = ?, telefono = ?, activo = ? WHERE id = ?',
-        [nombre, email, rol, telefono || null, activo === 'on' ? 1 : 0, req.params.id]
+        'UPDATE usuarios SET nombre = ?, email = ?, rol = ?, telefono = ?, activo = ?, estacion_id = ?, whatsapp_numero = ? WHERE id = ?',
+        [nombre, email, rol, telefono || null, activo === 'on' ? 1 : 0, estacion_id || null, whatsapp_numero?.trim() || null, req.params.id]
       );
     }
-    
+
     res.redirect('/usuarios');
   } catch (error) {
     console.error('Error:', error);
