@@ -298,15 +298,29 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       });
       
-      // Preparar FormData
-      const formData = new FormData(e.target);
+      // Preparar FormData — IMPORTANTE: los campos de texto (evaluaciones, firma)
+      // se envían ANTES que las fotos. Si una foto supera el límite de Multer y
+      // aborta el parseo del resto del formulario, el checklist ya quedó a salvo
+      // en el servidor (antes solía perderse y la auditoría se guardaba con 0 ítems).
+      const formOriginal = new FormData(e.target);
+      const formData = new FormData();
+
+      // 1) Todos los campos de texto primero
+      for (const [key, value] of formOriginal.entries()) {
+        if (!(value instanceof File)) formData.append(key, value);
+      }
       formData.append('evaluaciones', JSON.stringify(evaluaciones));
-      
-      // Capturar firma
+
+      // Capturar firma (también texto — va antes que las fotos)
       const firmaDataURL = canvas.toDataURL();
       const firmaVacia = ctx.getImageData(0, 0, canvas.width, canvas.height).data.every(v => v === 0 || v === 255);
       if (!firmaVacia) {
         formData.set('supervisor_firma', firmaDataURL);
+      }
+
+      // 2) Fotos al final
+      for (const [key, value] of formOriginal.entries()) {
+        if (value instanceof File) formData.append(key, value);
       }
       
       // Mostrar progreso
