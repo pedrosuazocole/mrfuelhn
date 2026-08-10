@@ -457,9 +457,31 @@
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
       try {
-        const fd = new FormData(document.getElementById('formMantenimiento'));
-        fd.set('evaluaciones', JSON.stringify(evaluaciones));
-        const resp   = await fetch('/mantenimiento/nuevo', { method:'POST', body:fd });
+        // IMPORTANTE: 'evaluaciones' se envía ANTES que las fotos. Si una foto
+        // supera el límite de Multer y aborta el parseo del resto del formulario,
+        // el checklist ya quedó a salvo en el servidor (antes se perdía y el
+        // mantenimiento se guardaba con 0 ítems → 0%).
+        const fdOriginal = new FormData(document.getElementById('formMantenimiento'));
+        const fd = new FormData();
+        for (const [key, value] of fdOriginal.entries()) {
+          if (!(value instanceof File)) fd.append(key, value);
+        }
+        fd.append('evaluaciones', JSON.stringify(evaluaciones));
+        for (const [key, value] of fdOriginal.entries()) {
+          if (value instanceof File) fd.append(key, value);
+        }
+        const resp = await fetch('/mantenimiento/nuevo', {
+          method: 'POST',
+          credentials: 'include',
+          body: fd
+        });
+
+        if (resp.status === 401) {
+          alert('⚠️ Tu sesión ha expirado.\n\nLa página se va a recargar para que inicies sesión nuevamente.');
+          window.location.href = '/login';
+          return;
+        }
+
         const result = await resp.json();
         if (result.success) {
           if (enviarWA && result.mantenimientoId) {
