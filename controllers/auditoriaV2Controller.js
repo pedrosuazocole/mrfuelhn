@@ -118,7 +118,29 @@ exports.crearAuditoria = async (req, res) => {
         mensaje: 'Estación, fecha, hora y área son obligatorios'
       });
     }
-    
+
+    // ── Protección anti-duplicado: reintentos de red o doble clic ─────────
+    // Si el mismo auditor ya registró una auditoría idéntica (misma estación,
+    // área y fecha) en los últimos 3 minutos, es casi seguro un reintento de
+    // red tras un "Failed to fetch" — devolvemos la existente en vez de crear
+    // una nueva (esto era lo que causaba auditorías duplicadas por estación).
+    const auditoriaReciente = await getAsync(
+      `SELECT id, calificacion_general FROM auditorias_v2
+       WHERE estacion_id = ? AND area_evaluada = ? AND fecha_visita = ? AND auditor_id = ?
+         AND fecha_creacion > datetime('now', '-3 minutes')
+       ORDER BY id DESC LIMIT 1`,
+      [estacion_id, area_evaluada, fecha_visita, req.session.userId]
+    );
+    if (auditoriaReciente) {
+      console.log(`ℹ️  Auditoría duplicada detectada — se reutiliza la existente #${auditoriaReciente.id} en vez de crear otra`);
+      return res.json({
+        success: true,
+        auditoriaId: auditoriaReciente.id,
+        calificacion: auditoriaReciente.calificacion_general,
+        mensaje: 'Auditoría guardada exitosamente'
+      });
+    }
+
     // Parsear evaluaciones
     const evaluacionesData = JSON.parse(evaluaciones || '{}');
     console.log('✅ Evaluaciones parseadas:', Object.keys(evaluacionesData).length, 'items');

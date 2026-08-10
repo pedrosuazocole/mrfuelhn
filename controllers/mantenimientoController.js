@@ -92,6 +92,24 @@ exports.crearMantenimiento = async (req, res) => {
       return res.status(400).json({ success: false, mensaje: 'Faltan datos obligatorios' });
     }
 
+    // ── Protección anti-duplicado: reintentos de red o doble clic ─────────
+    const tecnico_id_check = req.session.userId;
+    const mantReciente = await getAsync(
+      `SELECT id, calificacion_general FROM mantenimientos
+       WHERE estacion_id = ? AND categoria_id = ? AND fecha_visita = ? AND tecnico_id = ?
+         AND fecha_creacion > datetime('now', '-3 minutes')
+       ORDER BY id DESC LIMIT 1`,
+      [estacion_id, categoria_id, fecha_visita, tecnico_id_check]
+    );
+    if (mantReciente) {
+      console.log(`ℹ️  Mantenimiento duplicado detectado — se reutiliza el existente #${mantReciente.id} en vez de crear otro`);
+      return res.json({
+        success: true,
+        mantenimientoId: mantReciente.id,
+        mensaje: 'Mantenimiento creado exitosamente'
+      });
+    }
+
     const evaluaciones = JSON.parse(evalJSON || '[]');
     const tecnico_id   = req.session.userId;
 
