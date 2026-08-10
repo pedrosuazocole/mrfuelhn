@@ -38,7 +38,9 @@ const upload = multer({
     const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     cb(null, allowed.includes(file.mimetype));
   },
-  limits: { fileSize: 5 * 1024 * 1024 }
+  // 20MB por archivo — ver nota en config/multer.js. La compresión post-multer
+  // reduce el tamaño final; este límite solo debe permitir pasar la foto original.
+  limits: { fileSize: 20 * 1024 * 1024 }
 });
 
 // ── Ruta PÚBLICA — PDF para TextMeBot (sin autenticación) ──
