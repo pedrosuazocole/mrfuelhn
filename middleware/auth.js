@@ -9,6 +9,14 @@ const isAuthenticated = (req, res, next) => {
   if (req.session && req.session.userId) {
     return next();
   }
+  // Si es petición AJAX/fetch → JSON 401 (un redirect rompe el fetch y genera
+  // "Failed to fetch", obligando al usuario a salir y volver a entrar)
+  const esAjax = req.xhr ||
+    (req.headers.accept && req.headers.accept.includes('application/json')) ||
+    req.headers['x-requested-with'] === 'XMLHttpRequest';
+  if (esAjax) {
+    return res.status(401).json({ success: false, mensaje: 'Sesión expirada. Por favor recargá la página e iniciá sesión nuevamente.' });
+  }
   res.redirect('/login');
 };
 
