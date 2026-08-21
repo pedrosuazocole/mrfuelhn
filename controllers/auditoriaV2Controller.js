@@ -148,16 +148,23 @@ exports.crearAuditoria = async (req, res) => {
     // OBTENER ÍTEMS DEL ÁREA SELECCIONADA ÚNICAMENTE
     let itemsDelArea = [];
 
-    // Buscar la categoría cuyo id dinámico coincide con area_evaluada
-    // El id se genera como: nombre.toLowerCase().replace(/[^a-z0-9]/g, '_')
-    // Buscar por nombre exacto primero, luego por coincidencia aproximada
-    const todasCategorias = await allAsync(
-      `SELECT id, nombre FROM categorias WHERE activo = 1 AND nombre NOT IN ('BODEGA', 'COCINA')`
+    // ── Candidatas: SOLO categorías globales (sin estación) o de la estación
+    // que se está auditando. Nunca se consideran categorías de OTRA estación
+    // específica — esto evita que el checklist de una estación aparezca por
+    // error al auditar otra (bug reportado: Pista/Tienda 105 mostraba ítems
+    // de otras estaciones cuando la coincidencia exacta fallaba y el
+    // fallback de nombre parcial buscaba entre TODAS las categorías).
+    const categoriasCandidatas = await allAsync(
+      `SELECT id, nombre FROM categorias
+       WHERE activo = 1
+         AND nombre NOT IN ('BODEGA', 'COCINA')
+         AND (estacion_id IS NULL OR estacion_id = ?)`,
+      [estacion_id]
     );
 
-    // Encontrar la categoría cuyo id dinámico coincide
+    // 1) Coincidencia exacta por id dinámico (slug del nombre)
     let categoriaTarget = null;
-    for (const cat of todasCategorias) {
+    for (const cat of categoriasCandidatas) {
       const idDinamico = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
       if (idDinamico === area_evaluada) {
         categoriaTarget = cat;
@@ -165,29 +172,20 @@ exports.crearAuditoria = async (req, res) => {
       }
     }
 
-    // Fallback: buscar por nombre parcial (compatibilidad con 'pista' y 'tienda')
+    // 2) Fallback por coincidencia parcial — SOLO dentro de las candidatas
+    // ya filtradas por estación (nunca fuera de ese conjunto)
     if (!categoriaTarget) {
-      categoriaTarget = todasCategorias.find(c =>
+      categoriaTarget = categoriasCandidatas.find(c =>
         c.nombre.toLowerCase().includes(area_evaluada.toLowerCase()) ||
         area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
       );
     }
 
     if (categoriaTarget) {
-      // Incluir también categorías globales del mismo tipo (sin estacion_id) asignadas a esta estación
-      const categoriasRelacionadas = await allAsync(
-        `SELECT id FROM categorias
-         WHERE activo = 1
-           AND (estacion_id IS NULL OR estacion_id = ?)
-           AND (id = ? OR nombre = ?)`,
-        [estacion_id, categoriaTarget.id, categoriaTarget.nombre]
+      itemsDelArea = await allAsync(
+        `SELECT id FROM items_auditoria WHERE categoria_id = ? AND activo = 1`,
+        [categoriaTarget.id]
       );
-      const ids = categoriasRelacionadas.map(c => c.id);
-      if (ids.length > 0) {
-        itemsDelArea = await allAsync(
-          `SELECT id FROM items_auditoria WHERE categoria_id IN (${ids.join(',')}) AND activo = 1`
-        );
-      }
     }
 
     console.log(`📋 Total ítems en área ${area_evaluada} para estación ${estacion_id}:`, itemsDelArea.length);
@@ -393,13 +391,29 @@ exports.verDetalle = async (req, res) => {
       return res.status(404).send('Auditoría no encontrada');
     }
     
-    // Obtener categorías con evaluaciones - SOLO las del área auditada
-    let filtroCategoria = '';
-    if (auditoria.area_evaluada === 'pista') {
-      filtroCategoria = "AND c.nombre = 'PISTA'";
-    } else if (auditoria.area_evaluada === 'tienda') {
-      filtroCategoria = "AND c.nombre = 'TIENDA'";
+    // Obtener categorías con evaluaciones - SOLO la categoría exacta auditada
+    // (antes: filtro hardcodeado solo para 'pista'/'tienda' que dejaba SIN
+    // FILTRO los checklists dinámicos por estación, causando que aparecieran
+    // ítems de OTRAS estaciones en el detalle de la auditoría)
+    const categoriasCandidatasDet = await allAsync(
+      `SELECT id, nombre FROM categorias
+       WHERE activo = 1
+         AND nombre NOT IN ('BODEGA', 'COCINA')
+         AND (estacion_id IS NULL OR estacion_id = ?)`,
+      [auditoria.estacion_id]
+    );
+    let categoriaTargetDet = null;
+    for (const cat of categoriasCandidatasDet) {
+      const slug = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      if (slug === auditoria.area_evaluada) { categoriaTargetDet = cat; break; }
     }
+    if (!categoriaTargetDet) {
+      categoriaTargetDet = categoriasCandidatasDet.find(c =>
+        c.nombre.toLowerCase().includes(auditoria.area_evaluada.toLowerCase()) ||
+        auditoria.area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
+      );
+    }
+    const filtroCategoria = categoriaTargetDet ? `AND c.id = ${categoriaTargetDet.id}` : '';
 
     const categorias = await allAsync(`
       SELECT DISTINCT c.*
