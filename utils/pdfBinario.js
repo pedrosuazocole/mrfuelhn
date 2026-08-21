@@ -60,10 +60,27 @@ async function generarPDFBinarioAuditoria(auditoriaId) {
 
   if (!auditoria) throw new Error('Auditoría no encontrada');
 
-  // Filtro por área
-  let filtroArea = '';
-  if (auditoria.area_evaluada === 'pista')  filtroArea = "AND c.nombre = 'PISTA'";
-  if (auditoria.area_evaluada === 'tienda') filtroArea = "AND c.nombre = 'TIENDA'";
+  // Filtro por área — SOLO la categoría exacta auditada, dentro de las
+  // categorías globales o de la propia estación (nunca de otra estación)
+  const categoriasCandidatasPdfBin = await allAsync(
+    `SELECT id, nombre FROM categorias
+     WHERE activo = 1
+       AND nombre NOT IN ('BODEGA', 'COCINA')
+       AND (estacion_id IS NULL OR estacion_id = ?)`,
+    [auditoria.estacion_id]
+  );
+  let categoriaTargetPdfBin = null;
+  for (const cat of categoriasCandidatasPdfBin) {
+    const slug = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    if (slug === auditoria.area_evaluada) { categoriaTargetPdfBin = cat; break; }
+  }
+  if (!categoriaTargetPdfBin) {
+    categoriaTargetPdfBin = categoriasCandidatasPdfBin.find(c =>
+      c.nombre.toLowerCase().includes(auditoria.area_evaluada.toLowerCase()) ||
+      auditoria.area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
+    );
+  }
+  const filtroArea = categoriaTargetPdfBin ? `AND c.id = ${categoriaTargetPdfBin.id}` : '';
 
   const evaluaciones = await allAsync(`
     SELECT ev.*, i.nombre AS item_nombre, c.nombre AS categoria_nombre

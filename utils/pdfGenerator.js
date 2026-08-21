@@ -30,13 +30,29 @@ async function generarPDFAuditoria(auditoriaId) {
       throw new Error('Auditoría no encontrada');
     }
     
-    // Obtener evaluaciones - solo del área auditada
-    let filtroAreaPdf = '';
-    if (auditoria.area_evaluada === 'pista') {
-      filtroAreaPdf = "AND c.nombre = 'PISTA'";
-    } else if (auditoria.area_evaluada === 'tienda') {
-      filtroAreaPdf = "AND c.nombre = 'TIENDA'";
+    // Obtener evaluaciones - SOLO de la categoría exacta auditada
+    // (antes: filtro hardcodeado solo para 'pista'/'tienda' que dejaba SIN
+    // FILTRO los checklists dinámicos por estación como 'pista_105', causando
+    // que aparecieran ítems de OTRAS estaciones en el mismo PDF)
+    const categoriasCandidatasPdf = await allAsync(
+      `SELECT id, nombre FROM categorias
+       WHERE activo = 1
+         AND nombre NOT IN ('BODEGA', 'COCINA')
+         AND (estacion_id IS NULL OR estacion_id = ?)`,
+      [auditoria.estacion_id]
+    );
+    let categoriaTargetPdf = null;
+    for (const cat of categoriasCandidatasPdf) {
+      const slug = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      if (slug === auditoria.area_evaluada) { categoriaTargetPdf = cat; break; }
     }
+    if (!categoriaTargetPdf) {
+      categoriaTargetPdf = categoriasCandidatasPdf.find(c =>
+        c.nombre.toLowerCase().includes(auditoria.area_evaluada.toLowerCase()) ||
+        auditoria.area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
+      );
+    }
+    const filtroAreaPdf = categoriaTargetPdf ? `AND c.id = ${categoriaTargetPdf.id}` : '';
 
     const evaluaciones = await allAsync(`
       SELECT 
