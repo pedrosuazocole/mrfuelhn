@@ -8,12 +8,21 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const { iniciarCronJobs } = require('./utils/cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ── Seguridad: cabeceras HTTP básicas ──────────────────────────────────────
+// CSP desactivado (contentSecurityPolicy: false) porque las vistas EJS usan
+// scripts inline y estilos inline en varios lugares; activarlo requeriría
+// una revisión completa de esas vistas. El resto de protecciones de helmet
+// (X-Frame-Options, X-Content-Type-Options, HSTS, etc.) quedan activas.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // Crear directorio de base de datos SOLO en desarrollo
 if (process.env.NODE_ENV !== 'production') {
@@ -85,8 +94,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 // se comporten de forma consistente detrás de su balanceador/proxy HTTPS
 app.set('trust proxy', 1);
 
-// Sesiones
+// Sesiones — persistidas en SQLite (antes: MemoryStore, que se borraba
+// completo en cada reinicio del servidor y obligaba a los usuarios a volver
+// a iniciar sesión). El archivo de sesiones vive en el mismo volumen
+// persistente que la base de datos principal, así que sobrevive a reinicios
+// y redeploys igual que el resto de los datos.
+const sesionesDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'database');
+if (!fs.existsSync(sesionesDir)) {
+  fs.mkdirSync(sesionesDir, { recursive: true });
+}
 app.use(session({
+  store: new SQLiteStore({
+    dir: sesionesDir,
+    db: 'sesiones.db',
+    concurrentDB: true
+  }),
   secret: process.env.SESSION_SECRET || 'mr_fuel_secret_key',
   resave: false,
   saveUninitialized: false,
@@ -121,6 +143,28 @@ const usuariosRoutes     = require('./routes/usuarios');
 const mantenimientoRoutes = require('./routes/mantenimiento');
 const agenteIARoutes      = require('./routes/agente-ia');
 const reportesRoutes      = require('./routes/reportes');
+
+// ── Healthcheck ──────────────────────────────────────────────────────────
+// Verifica que el proceso esté vivo Y que la base de datos responda.
+// Railway (u otro monitor) puede pegarle a este endpoint para detectar
+// caídas reales, no solo si el proceso sigue corriendo.
+app.get('/health', async (req, res) => {
+  try {
+    const { getAsync } = require('./config/database');
+    await getAsync('SELECT 1 as ok');
+    res.status(200).json({
+      status: 'ok',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      mensaje: 'Base de datos no responde',
+      error: error.message
+    });
+  }
+});
 
 // Rutas públicas
 app.use('/', authRoutes);
