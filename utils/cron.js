@@ -7,6 +7,7 @@ const cron = require('node-cron');
 const moment = require('moment-timezone');
 const { allAsync, runAsync } = require('../config/database');
 const { enviarRecordatorio } = require('./email');
+const { ejecutarBackup } = require('./backup');
 const {
   enviarReporteAuditorias,
   enviarReporteMantenimientos,
@@ -270,12 +271,28 @@ const programarReporteTickets = () => {
 };
 
 /**
+ * Backup diario de la base de datos — 2:00 AM (hora de baja actividad)
+ * Se envía comprimida por correo. Ver utils/backup.js para el detalle.
+ */
+const programarBackupDiario = () => {
+  cron.schedule('0 2 * * *', async () => {
+    console.log('\n💾 [Cron] Ejecutando backup diario de la base de datos...');
+    try {
+      await ejecutarBackup();
+    } catch (error) {
+      console.error('❌ Error en backup diario:', error.message);
+    }
+  }, { timezone: process.env.TZ || 'America/Tegucigalpa' });
+};
+
+/**
  * Iniciar todos los cron jobs
  */
 const iniciarCronJobs = () => {
   console.log('\n🚀 Iniciando sistema de recordatorios automáticos...\n');
   programarRecordatoriosSemanales();
   reenviarRecordatoriosFallidos();
+  programarBackupDiario();
   programarRecordatorioAuditorias();
   programarRecordatorioMediodia();
   programarRecordatorioUrgenteAuditorias();
@@ -284,6 +301,7 @@ const iniciarCronJobs = () => {
   programarReporteTickets();
   programarMantenimientoViernes();
   programarMantenimientoLunes();
+  console.log('📅 Backup diario de base de datos:           2:00 AM (por correo)');
   console.log('📅 Recordatorio matutino auditorías:        9:00 AM (supervisores + admins)');
   console.log('📅 Recordatorio auditoría por estación:     12:00 PM (supervisores + admins)');
   console.log('📅 Recordatorio urgente auditorías:         1:00 PM (supervisores + admins)');

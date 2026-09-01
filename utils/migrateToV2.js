@@ -1713,6 +1713,65 @@ async function migrarAV2() {
       }
     }
 
+    // ── MIGRACIÓN: estacion_id en categorias (checklist de auditorías) ────
+    // Esta columna es necesaria para el checklist dinámico por estación.
+    // Si ya existe (por un deploy anterior), este paso no hace nada.
+    try {
+      await runAsync(`ALTER TABLE categorias ADD COLUMN estacion_id INTEGER REFERENCES estaciones(id) ON DELETE SET NULL`);
+      console.log('✅ Columna estacion_id agregada a categorias');
+    } catch (e) {
+      console.log('  ℹ️  estacion_id ya existe en categorias');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FASE 1 — ÍNDICES ADICIONALES DE RENDIMIENTO
+    // ═══════════════════════════════════════════════════════════════════
+    // Se agregan al FINAL de la migración porque referencian tablas
+    // (auditorias_v2, mantenimientos, etc.) que recién existen a esta
+    // altura del script. CREATE INDEX IF NOT EXISTS es idempotente —
+    // no hay riesgo de duplicar índices en deploys sucesivos.
+    console.log('\n🔍 Creando índices adicionales (Fase 1 — rendimiento)...');
+    try {
+      const indicesFase1 = [
+        // Auditorías v2 — filtros más comunes: por estación y por fecha
+        `CREATE INDEX IF NOT EXISTS idx_auditoriasv2_estacion ON auditorias_v2(estacion_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_auditoriasv2_fecha ON auditorias_v2(fecha_visita)`,
+        `CREATE INDEX IF NOT EXISTS idx_auditoriasv2_auditor ON auditorias_v2(auditor_id)`,
+        // Ítems y evaluaciones de auditoría
+        `CREATE INDEX IF NOT EXISTS idx_items_auditoria_categoria ON items_auditoria(categoria_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_evalitems_auditoria ON evaluaciones_items(auditoria_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_evalitems_item ON evaluaciones_items(item_id)`,
+        // Categorías de checklist (por estación)
+        `CREATE INDEX IF NOT EXISTS idx_categorias_estacion ON categorias(estacion_id)`,
+        // Mantenimientos — mismos filtros que auditorías
+        `CREATE INDEX IF NOT EXISTS idx_mantenimientos_estacion ON mantenimientos(estacion_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantenimientos_fecha ON mantenimientos(fecha_visita)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantenimientos_categoria ON mantenimientos(categoria_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantenimientos_tecnico ON mantenimientos(tecnico_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantitems_categoria ON mantenimiento_items(categoria_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantcategorias_estacion ON mantenimiento_categorias(estacion_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantevaluaciones_mant ON mantenimiento_evaluaciones(mantenimiento_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_mantevaluaciones_item ON mantenimiento_evaluaciones(item_id)`,
+        // Tickets — se filtran por estación y por estado constantemente
+        `CREATE INDEX IF NOT EXISTS idx_tickets_estacion ON tickets(estacion_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_tickets_estado ON tickets(estado)`,
+        // Usuarios — se filtran por estación para recordatorios
+        `CREATE INDEX IF NOT EXISTS idx_usuarios_estacion ON usuarios(estacion_id)`,
+      ];
+      for (const sql of indicesFase1) {
+        try {
+          await runAsync(sql);
+        } catch (e) {
+          // Una tabla/columna puntual puede no existir en instalaciones muy
+          // viejas — se omite ese índice puntual sin frenar el resto
+          console.log(`  ⚠️  No se pudo crear índice (${sql.match(/idx_\w+/)?.[0] || '?'}): ${e.message}`);
+        }
+      }
+      console.log(`✅ Índices adicionales verificados/creados (${indicesFase1.length})`);
+    } catch (e) {
+      console.log('  ⚠️  Error creando índices de Fase 1:', e.message);
+    }
+
     console.log('\n✅ Migración completada exitosamente!');
     console.log('\n📊 Resumen:');
     console.log(`  - 4 categorías creadas`);

@@ -83,6 +83,51 @@ const enviarEmailSMTP = async (destinatarios, asunto, html) => {
 };
 
 /**
+ * Enviar email CON ADJUNTO usando Resend
+ */
+const enviarEmailConAdjuntoResend = async (destinatarios, asunto, html, rutaArchivo, nombreArchivo) => {
+  const fsSync = require('fs');
+  const contenido = fsSync.readFileSync(rutaArchivo);
+  const { data, error } = await resendClient.emails.send({
+    from: process.env.EMAIL_FROM || 'Mr. Fuel <onboarding@resend.dev>',
+    to: destinatarios,
+    subject: asunto,
+    html: html,
+    attachments: [{ filename: nombreArchivo, content: contenido.toString('base64') }]
+  });
+  if (error) throw new Error(error.message);
+  console.log('✅ Email con adjunto enviado vía Resend:', data.id);
+  return data;
+};
+
+/**
+ * Enviar email CON ADJUNTO usando SMTP tradicional
+ */
+const enviarEmailConAdjuntoSMTP = async (destinatarios, asunto, html, rutaArchivo, nombreArchivo) => {
+  const info = await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: Array.isArray(destinatarios) ? destinatarios.join(',') : destinatarios,
+    subject: asunto,
+    html: html,
+    attachments: [{ filename: nombreArchivo, path: rutaArchivo }]
+  });
+  console.log('✅ Email con adjunto enviado vía SMTP:', info.messageId);
+  return info;
+};
+
+/**
+ * Enviar email con adjunto (auto-detecta servicio) — usado para backups
+ */
+const enviarEmailConAdjunto = async (destinatarios, asunto, html, rutaArchivo, nombreArchivo) => {
+  const destArray = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
+  if (resendClient) {
+    return await enviarEmailConAdjuntoResend(destArray, asunto, html, rutaArchivo, nombreArchivo);
+  } else {
+    return await enviarEmailConAdjuntoSMTP(destArray, asunto, html, rutaArchivo, nombreArchivo);
+  }
+};
+
+/**
  * Enviar email (auto-detecta servicio)
  */
 const enviarEmail = async (destinatarios, asunto, html) => {
@@ -499,5 +544,6 @@ const enviarNotificacionAuditoriaV2 = async (auditoria, estacion, auditor, evalu
 module.exports = {
   enviarNotificacionAuditoria,
   enviarNotificacionAuditoriaV2,
-  enviarRecordatorio
+  enviarRecordatorio,
+  enviarEmailConAdjunto
 };
