@@ -50,15 +50,12 @@ exports.mostrarFormularioNueva = async (req, res) => {
     const estaciones = await allAsync(
       'SELECT * FROM estaciones WHERE activo = 1 ORDER BY nombre ASC'
     );
-
-    // Obtener todas las categorías activas excluyendo las internas BODEGA/COCINA
+    
+    // Obtener todas las categorías con sus ítems
     const categorias = await allAsync(
-      `SELECT * FROM categorias
-       WHERE activo = 1
-         AND nombre NOT IN ('BODEGA', 'COCINA')
-       ORDER BY orden ASC`
+      'SELECT * FROM categorias WHERE activo = 1 ORDER BY orden ASC'
     );
-
+    
     // Obtener ítems por cada categoría
     for (let categoria of categorias) {
       categoria.items = await allAsync(
@@ -66,18 +63,34 @@ exports.mostrarFormularioNueva = async (req, res) => {
         [categoria.id]
       );
     }
-
-    // Construir grupos dinámicamente desde las categorías
-    // Cada categoría se convierte en un grupo seleccionable en el formulario
-    // El id del grupo es el nombre en minúsculas sin espacios (para area_evaluada)
-    const grupos = categorias.map(cat => ({
-      id:         cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-      nombre:     cat.nombre,
-      descripcion: cat.descripcion || `Evaluar ${cat.nombre.toLowerCase()}`,
-      estacion_id: cat.estacion_id || null,
-      categorias: [cat]
-    }));
-
+    
+    // Crear grupos independientes: PISTA y TIENDA (con sus subcategorías)
+    const grupos = [];
+    
+    // GRUPO 1: PISTA (solo PISTA)
+    const pista = categorias.find(c => c.nombre === 'PISTA');
+    if (pista) {
+      grupos.push({
+        id: 'pista',
+        nombre: 'PISTA',
+        categorias: [pista]
+      });
+    }
+    
+    // GRUPO 2: TIENDA (solo TIENDA)
+    const tienda = categorias.find(c => c.nombre === 'TIENDA');
+    
+    const categoriaTienda = [];
+    if (tienda) categoriaTienda.push(tienda);
+    
+    if (categoriaTienda.length > 0) {
+      grupos.push({
+        id: 'tienda',
+        nombre: 'TIENDA',
+        categorias: categoriaTienda
+      });
+    }
+    
     res.render('auditorias-v2/nueva', {
       user: req.session,
       titulo: 'Nueva Auditoría',
@@ -118,77 +131,35 @@ exports.crearAuditoria = async (req, res) => {
         mensaje: 'Estación, fecha, hora y área son obligatorios'
       });
     }
-
-    // ── Protección anti-duplicado: reintentos de red o doble clic ─────────
-    // Si el mismo auditor ya registró una auditoría idéntica (misma estación,
-    // área y fecha) en los últimos 3 minutos, es casi seguro un reintento de
-    // red tras un "Failed to fetch" — devolvemos la existente en vez de crear
-    // una nueva (esto era lo que causaba auditorías duplicadas por estación).
-    const auditoriaReciente = await getAsync(
-      `SELECT id, calificacion_general FROM auditorias_v2
-       WHERE estacion_id = ? AND area_evaluada = ? AND fecha_visita = ? AND auditor_id = ?
-         AND fecha_creacion > datetime('now', '-3 minutes')
-       ORDER BY id DESC LIMIT 1`,
-      [estacion_id, area_evaluada, fecha_visita, req.session.userId]
-    );
-    if (auditoriaReciente) {
-      console.log(`ℹ️  Auditoría duplicada detectada — se reutiliza la existente #${auditoriaReciente.id} en vez de crear otra`);
-      return res.json({
-        success: true,
-        auditoriaId: auditoriaReciente.id,
-        calificacion: auditoriaReciente.calificacion_general,
-        mensaje: 'Auditoría guardada exitosamente'
-      });
-    }
-
+    
     // Parsear evaluaciones
     const evaluacionesData = JSON.parse(evaluaciones || '{}');
     console.log('✅ Evaluaciones parseadas:', Object.keys(evaluacionesData).length, 'items');
     
     // OBTENER ÍTEMS DEL ÁREA SELECCIONADA ÚNICAMENTE
     let itemsDelArea = [];
-
-    // ── Candidatas: SOLO categorías globales (sin estación) o de la estación
-    // que se está auditando. Nunca se consideran categorías de OTRA estación
-    // específica — esto evita que el checklist de una estación aparezca por
-    // error al auditar otra (bug reportado: Pista/Tienda 105 mostraba ítems
-    // de otras estaciones cuando la coincidencia exacta fallaba y el
-    // fallback de nombre parcial buscaba entre TODAS las categorías).
-    const categoriasCandidatas = await allAsync(
-      `SELECT id, nombre FROM categorias
-       WHERE activo = 1
-         AND nombre NOT IN ('BODEGA', 'COCINA')
-         AND (estacion_id IS NULL OR estacion_id = ?)`,
-      [estacion_id]
-    );
-
-    // 1) Coincidencia exacta por id dinámico (slug del nombre)
-    let categoriaTarget = null;
-    for (const cat of categoriasCandidatas) {
-      const idDinamico = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
-      if (idDinamico === area_evaluada) {
-        categoriaTarget = cat;
-        break;
+    
+    if (area_evaluada === 'pista') {
+      // Solo ítems de PISTA
+      const categoriaPista = await getAsync("SELECT id FROM categorias WHERE nombre = 'PISTA'");
+      if (categoriaPista) {
+        itemsDelArea = await allAsync(
+          'SELECT id FROM items_auditoria WHERE categoria_id = ? AND activo = 1',
+          [categoriaPista.id]
+        );
       }
-    }
-
-    // 2) Fallback por coincidencia parcial — SOLO dentro de las candidatas
-    // ya filtradas por estación (nunca fuera de ese conjunto)
-    if (!categoriaTarget) {
-      categoriaTarget = categoriasCandidatas.find(c =>
-        c.nombre.toLowerCase().includes(area_evaluada.toLowerCase()) ||
-        area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
+    } else if (area_evaluada === 'tienda') {
+      // Ítems de TIENDA únicamente
+      const categoriasTienda = await allAsync(
+        "SELECT id FROM categorias WHERE nombre = 'TIENDA'"
       );
-    }
-
-    if (categoriaTarget) {
+      const categoriaIds = categoriasTienda.map(c => c.id);
       itemsDelArea = await allAsync(
-        `SELECT id FROM items_auditoria WHERE categoria_id = ? AND activo = 1`,
-        [categoriaTarget.id]
+        `SELECT id FROM items_auditoria WHERE categoria_id IN (${categoriaIds.join(',')}) AND activo = 1`
       );
     }
-
-    console.log(`📋 Total ítems en área ${area_evaluada} para estación ${estacion_id}:`, itemsDelArea.length);
+    
+    console.log(`📋 Total ítems en área ${area_evaluada}:`, itemsDelArea.length);
     
     // Calcular estadísticas SOLO con ítems del área seleccionada
     const idsDelArea = itemsDelArea.map(item => item.id.toString());
@@ -216,18 +187,16 @@ exports.crearAuditoria = async (req, res) => {
     const resultado = await runAsync(`
       INSERT INTO auditorias_v2 (
         estacion_id, auditor_id, fecha_visita, hora_visita,
-        area_evaluada,
         calificacion_general, total_items, items_cumplidos,
         observaciones_generales, recomendaciones,
         supervisor_nombre, supervisor_firma,
         estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completada')
     `, [
       estacion_id,
       req.session.userId,
       fecha_visita,
       hora_visita,
-      area_evaluada,
       calificacionGeneral,
       totalItems,
       itemsCumplidos,
@@ -268,7 +237,8 @@ exports.crearAuditoria = async (req, res) => {
         
         for (let i = 0; i < fotosItem.length; i++) {
           const file = fotosItem[i];
-          const rutaRelativa = `/uploads/auditorias/${file.filename}`;
+          // Si se subió a Cloudinary, guardamos la URL pública; si no, la ruta local
+          const rutaRelativa = file.cloudinaryUrl || `/uploads/auditorias/${file.filename}`;
           
           await runAsync(`
             INSERT INTO fotos_items (evaluacion_id, ruta_archivo, orden, descripcion)
@@ -329,20 +299,9 @@ exports.crearAuditoria = async (req, res) => {
     }
 
     // ── CallmeBot: notificación automática WhatsApp ──────────────────────
-    // Guard atómico: solo envía si no se notificó en los últimos 2 minutos.
-    // Evita duplicar el ciclo completo si el botón manual también se dispara.
     if (auditoria && estacion && auditor) {
-      const guard = await runAsync(
-        `UPDATE auditorias_v2 SET whatsapp_notificado_en = datetime('now')
-         WHERE id = ? AND (whatsapp_notificado_en IS NULL OR whatsapp_notificado_en < datetime('now', '-2 minutes'))`,
-        [auditoriaId]
-      );
-      if (guard.changes > 0) {
-        notificarAuditoria(auditoria, estacion, auditor, evaluacionesCompletas, todasLasFotos)
-          .catch(err => console.error('⚠️  TextMeBot auditoría:', err.message));
-      } else {
-        console.log(`ℹ️  Auditoría #${auditoriaId} ya fue notificada recientemente — se omite envío automático duplicado.`);
-      }
+      notificarAuditoria(auditoria, estacion, auditor, evaluacionesCompletas, todasLasFotos)
+        .catch(err => console.error('⚠️  TextMeBot auditoría:', err.message));
     }
     
     console.log(`✅ Auditoría v2 creada: ID ${auditoriaId} - ${estacion ? estacion.nombre : 'N/A'} (${calificacionGeneral}%)`);
@@ -391,29 +350,13 @@ exports.verDetalle = async (req, res) => {
       return res.status(404).send('Auditoría no encontrada');
     }
     
-    // Obtener categorías con evaluaciones - SOLO la categoría exacta auditada
-    // (antes: filtro hardcodeado solo para 'pista'/'tienda' que dejaba SIN
-    // FILTRO los checklists dinámicos por estación, causando que aparecieran
-    // ítems de OTRAS estaciones en el detalle de la auditoría)
-    const categoriasCandidatasDet = await allAsync(
-      `SELECT id, nombre FROM categorias
-       WHERE activo = 1
-         AND nombre NOT IN ('BODEGA', 'COCINA')
-         AND (estacion_id IS NULL OR estacion_id = ?)`,
-      [auditoria.estacion_id]
-    );
-    let categoriaTargetDet = null;
-    for (const cat of categoriasCandidatasDet) {
-      const slug = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
-      if (slug === auditoria.area_evaluada) { categoriaTargetDet = cat; break; }
+    // Obtener categorías con evaluaciones - SOLO las del área auditada
+    let filtroCategoria = '';
+    if (auditoria.area_evaluada === 'pista') {
+      filtroCategoria = "AND c.nombre = 'PISTA'";
+    } else if (auditoria.area_evaluada === 'tienda') {
+      filtroCategoria = "AND c.nombre = 'TIENDA'";
     }
-    if (!categoriaTargetDet) {
-      categoriaTargetDet = categoriasCandidatasDet.find(c =>
-        c.nombre.toLowerCase().includes(auditoria.area_evaluada.toLowerCase()) ||
-        auditoria.area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
-      );
-    }
-    const filtroCategoria = categoriaTargetDet ? `AND c.id = ${categoriaTargetDet.id}` : '';
 
     const categorias = await allAsync(`
       SELECT DISTINCT c.*
@@ -666,21 +609,6 @@ exports.enviarWhatsAppTextMeBot = async (req, res) => {
       return res.status(400).json({
         success: false,
         mensaje: 'No hay números con API Key de TextMeBot configurada. Ve a Configuración → WhatsApp.'
-      });
-    }
-
-    // Guard atómico: evita reenvíos duplicados si ya se notificó hace menos de 2 minutos
-    // (por ejemplo, el envío automático al crear + un clic manual casi inmediato)
-    const guard = await runAsync(
-      `UPDATE auditorias_v2 SET whatsapp_notificado_en = datetime('now')
-       WHERE id = ? AND (whatsapp_notificado_en IS NULL OR whatsapp_notificado_en < datetime('now', '-2 minutes'))`,
-      [id]
-    );
-
-    if (guard.changes === 0) {
-      return res.json({
-        success: true,
-        mensaje: 'Esta auditoría ya fue enviada por WhatsApp hace menos de 2 minutos. Esperá un momento antes de reenviar para evitar duplicados.'
       });
     }
 

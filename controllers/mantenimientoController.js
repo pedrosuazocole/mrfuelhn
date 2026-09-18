@@ -92,24 +92,6 @@ exports.crearMantenimiento = async (req, res) => {
       return res.status(400).json({ success: false, mensaje: 'Faltan datos obligatorios' });
     }
 
-    // ── Protección anti-duplicado: reintentos de red o doble clic ─────────
-    const tecnico_id_check = req.session.userId;
-    const mantReciente = await getAsync(
-      `SELECT id, calificacion_general FROM mantenimientos
-       WHERE estacion_id = ? AND categoria_id = ? AND fecha_visita = ? AND tecnico_id = ?
-         AND fecha_creacion > datetime('now', '-3 minutes')
-       ORDER BY id DESC LIMIT 1`,
-      [estacion_id, categoria_id, fecha_visita, tecnico_id_check]
-    );
-    if (mantReciente) {
-      console.log(`ℹ️  Mantenimiento duplicado detectado — se reutiliza el existente #${mantReciente.id} en vez de crear otro`);
-      return res.json({
-        success: true,
-        mantenimientoId: mantReciente.id,
-        mensaje: 'Mantenimiento creado exitosamente'
-      });
-    }
-
     const evaluaciones = JSON.parse(evalJSON || '[]');
     const tecnico_id   = req.session.userId;
 
@@ -146,7 +128,7 @@ exports.crearMantenimiento = async (req, res) => {
       // Fotos del ítem
       const fotosItem = archivos.filter(f => f.fieldname === `fotos_item_${ev.item_id}`);
       for (let i = 0; i < fotosItem.length; i++) {
-        const ruta = `/uploads/mantenimiento/${fotosItem[i].filename}`;
+        const ruta = fotosItem[i].cloudinaryUrl || `/uploads/mantenimiento/${fotosItem[i].filename}`;
         await runAsync(
           'INSERT INTO mantenimiento_fotos (evaluacion_id, ruta_archivo, orden) VALUES (?, ?, ?)',
           [evaluacionId, ruta, i + 1]
@@ -415,19 +397,16 @@ exports.eliminarMantenimiento = async (req, res) => {
 exports.listarCategorias = async (req, res) => {
   try {
     const categorias = await allAsync(`
-      SELECT mc.*, e.nombre AS estacion_nombre, COUNT(mi.id) AS total_items
+      SELECT mc.*, COUNT(mi.id) AS total_items
       FROM mantenimiento_categorias mc
-      LEFT JOIN estaciones e ON mc.estacion_id = e.id
       LEFT JOIN mantenimiento_items mi ON mc.id = mi.categoria_id
       GROUP BY mc.id
       ORDER BY mc.orden
     `);
-    const estaciones = await allAsync('SELECT id, nombre FROM estaciones WHERE activo = 1 ORDER BY nombre');
     res.render('mantenimiento/categorias', {
       user: req.session,
       titulo: 'Categorías de Mantenimiento',
-      categorias,
-      estaciones
+      categorias
     });
   } catch (error) {
     console.error('Error listarCategorias:', error);
@@ -448,25 +427,6 @@ exports.crearCategoria = async (req, res) => {
   } catch (error) {
     console.error('Error crearCategoria:', error);
     res.status(500).send('Error al crear categoría');
-  }
-};
-
-// ─── ADMIN: EDITAR NOMBRE DE CATEGORÍA ───────────────────────────────────────
-exports.editarCategoria = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nombre, descripcion } = req.body;
-    if (!nombre || !nombre.trim()) {
-      return res.status(400).json({ success: false, mensaje: 'El nombre es obligatorio' });
-    }
-    await runAsync(
-      'UPDATE mantenimiento_categorias SET nombre = ?, descripcion = ? WHERE id = ?',
-      [nombre.trim(), descripcion || null, id]
-    );
-    res.json({ success: true, mensaje: 'Categoría actualizada' });
-  } catch (error) {
-    console.error('Error editarCategoria:', error);
-    res.status(500).json({ success: false, mensaje: 'Error al actualizar categoría' });
   }
 };
 
