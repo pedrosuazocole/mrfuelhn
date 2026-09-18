@@ -13,34 +13,32 @@
     "railway:start": "node verify-v2.js && node utils/migrateToV2.js && node server.js"
   },
   "keywords": [
-    "auditoría",
+    "auditor\u00eda",
     "gasolineras",
     "cliente-misterioso",
     "texaco"
   ],
-  "author": "Pedro - Instituto Tecnológico Santo Tomás",
+  "author": "Pedro - Instituto Tecnol\u00f3gico Santo Tom\u00e1s",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0",
-    "@google/genai": "^2.10.0",
-    "bcryptjs": "^2.4.3",
-    "connect-sqlite3": "^0.9.18",
-    "dotenv": "^16.3.1",
-    "ejs": "^3.1.9",
-    "exceljs": "^4.3.0",
     "express": "^4.18.2",
-    "express-rate-limit": "^7.5.1",
     "express-session": "^1.17.3",
-    "express-validator": "^7.0.1",
-    "helmet": "^7.2.0",
-    "moment": "^2.29.4",
-    "moment-timezone": "^0.5.43",
+    "sqlite3": "^5.1.6",
+    "bcryptjs": "^2.4.3",
+    "nodemailer": "^6.9.7",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.7",
+    "ejs": "^3.1.9",
+    "dotenv": "^16.3.1",
+    "express-validator": "^7.0.1",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
+    "exceljs": "^4.3.0",
     "pdfkit": "^0.15.1",
     "sharp": "^0.34.5",
-    "sqlite3": "^5.1.6"
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@google/genai": "^2.10.0",
+    "cloudinary": "^2.5.1"
   },
   "optionalDependencies": {
     "resend": "^3.0.0"
