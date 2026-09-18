@@ -5,6 +5,23 @@
  */
 
 const PDFDocument = require('pdfkit');
+
+const https_mod = require('https');
+const http_mod  = require('http');
+
+// Descarga una imagen remota (Cloudinary) como Buffer para usarla en PDFKit
+function descargarImagenRemota(url) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https') ? https_mod : http_mod;
+    mod.get(url, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
 const path        = require('path');
 const fs          = require('fs');
 const https       = require('https');
@@ -60,27 +77,10 @@ async function generarPDFBinarioAuditoria(auditoriaId) {
 
   if (!auditoria) throw new Error('Auditoría no encontrada');
 
-  // Filtro por área — SOLO la categoría exacta auditada, dentro de las
-  // categorías globales o de la propia estación (nunca de otra estación)
-  const categoriasCandidatasPdfBin = await allAsync(
-    `SELECT id, nombre FROM categorias
-     WHERE activo = 1
-       AND nombre NOT IN ('BODEGA', 'COCINA')
-       AND (estacion_id IS NULL OR estacion_id = ?)`,
-    [auditoria.estacion_id]
-  );
-  let categoriaTargetPdfBin = null;
-  for (const cat of categoriasCandidatasPdfBin) {
-    const slug = cat.nombre.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    if (slug === auditoria.area_evaluada) { categoriaTargetPdfBin = cat; break; }
-  }
-  if (!categoriaTargetPdfBin) {
-    categoriaTargetPdfBin = categoriasCandidatasPdfBin.find(c =>
-      c.nombre.toLowerCase().includes(auditoria.area_evaluada.toLowerCase()) ||
-      auditoria.area_evaluada.toLowerCase().includes(c.nombre.toLowerCase())
-    );
-  }
-  const filtroArea = categoriaTargetPdfBin ? `AND c.id = ${categoriaTargetPdfBin.id}` : '';
+  // Filtro por área
+  let filtroArea = '';
+  if (auditoria.area_evaluada === 'pista')  filtroArea = "AND c.nombre = 'PISTA'";
+  if (auditoria.area_evaluada === 'tienda') filtroArea = "AND c.nombre = 'TIENDA'";
 
   const evaluaciones = await allAsync(`
     SELECT ev.*, i.nombre AS item_nombre, c.nombre AS categoria_nombre
@@ -212,9 +212,16 @@ async function generarPDFBinarioAuditoria(auditoriaId) {
         let fx = 48;
         for (const ruta of fotasEnviar) {
           try {
-            const rutaLocal = resolverRutaLocal(ruta);
-            if (rutaLocal) {
-              doc.image(rutaLocal, fx, ry, { width: fW, height: fH, fit: [fW, fH] });
+            if (ruta && ruta.startsWith('http')) {
+              try {
+                const imgBuf = await descargarImagenRemota(ruta);
+                doc.image(imgBuf, fx, ry, { width: fW, height: fH, fit: [fW, fH] });
+              } catch (e) { /* foto remota no disponible */ }
+            } else {
+              const rutaLocal = resolverRutaLocal(ruta);
+              if (rutaLocal) {
+                doc.image(rutaLocal, fx, ry, { width: fW, height: fH, fit: [fW, fH] });
+              }
             }
           } catch (e) { /* foto no disponible */ }
           fx += fW + gap;
@@ -378,8 +385,13 @@ async function generarPDFBinarioMantenimiento(mantId) {
         let fx = 48;
         for (const ruta of fotasEnviar) {
           try {
-            const rutaLocal = resolverRutaLocal(ruta);
-            if (rutaLocal) doc.image(rutaLocal, fx, ry, { width: fW, height: fH, fit: [fW, fH] });
+            if (ruta && ruta.startsWith('http')) {
+              const imgBuf = await descargarImagenRemota(ruta);
+              doc.image(imgBuf, fx, ry, { width: fW, height: fH, fit: [fW, fH] });
+            } else {
+              const rutaLocal = resolverRutaLocal(ruta);
+              if (rutaLocal) doc.image(rutaLocal, fx, ry, { width: fW, height: fH, fit: [fW, fH] });
+            }
           } catch (e) { /* foto no disponible */ }
           fx += fW + gap;
         }

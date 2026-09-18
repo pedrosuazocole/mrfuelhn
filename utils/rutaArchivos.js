@@ -27,10 +27,27 @@ function resolverRutaArchivo(rutaRelativa) {
 }
 
 /**
- * Borra un archivo de foto de forma segura. No lanza error si no existe
- * o si ya fue borrado — solo lo registra en consola.
+ * Borra un archivo de foto de forma segura.
+ * - Si la ruta empieza con http → borra de Cloudinary
+ * - Si es ruta local → borra del disco
+ * No lanza error si no existe o si ya fue borrado.
  */
 async function borrarArchivoSeguro(rutaRelativa) {
+  if (!rutaRelativa) return false;
+
+  // ── Foto en Cloudinary ────────────────────────────────────────────────
+  if (rutaRelativa.startsWith('http')) {
+    try {
+      const { borrarFoto } = require('./cloudinaryUpload');
+      await borrarFoto(rutaRelativa);
+      return true;
+    } catch (err) {
+      console.warn(`⚠️  No se pudo eliminar de Cloudinary: ${err.message}`);
+      return false;
+    }
+  }
+
+  // ── Foto local (disco) ────────────────────────────────────────────────
   const rutaAbsoluta = resolverRutaArchivo(rutaRelativa);
   if (!rutaAbsoluta) return false;
 
